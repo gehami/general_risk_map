@@ -51,3 +51,44 @@ output$pageStub <- renderUI(tagList(
                   )
            )
 ))
+
+
+
+####### Experimenting with CDC data pulling ###########
+#install.packages("RSocrata")
+library(RSocrata)
+#accesses the 2018 cdc data by census tract. Please note that you can filter the data by a value by 
+#adding things like "?stateabbr=CA" after the ".json". any variable can be used to filter. 
+#pulls data from these sources:
+#2016: https://chronicdata.cdc.gov/500-Cities/500-Cities-City-level-Data-GIS-Friendly-Format-201/k56w-7tny
+#2017: https://chronicdata.cdc.gov/500-Cities/500-Cities-City-level-Data-GIS-Friendly-Format-201/djk3-k3zs
+#2018: https://chronicdata.cdc.gov/500-Cities/500-Cities-Census-Tract-level-Data-GIS-Friendly-Fo/k86t-wghb
+#API urls:
+#2016: https://chronicdata.cdc.gov/resource/a3kh-5fhs.json
+#2017: https://chronicdata.cdc.gov/resource/kucs-wizg.json
+#2018: https://chronicdata.cdc.gov/resource/k86t-wghb.json
+
+
+cdc_2016 <- read.socrata(
+  "https://chronicdata.cdc.gov/resource/a3kh-5fhs.json",
+  app_token = "2TJ9miraJvdQBDfA9fTD4QNZ6",
+  email     = "gehami@alumni.stanford.edu",
+  password  = "albutt69!socrata"
+)
+cdc_2017 <- read.socrata(
+  "https://chronicdata.cdc.gov/resource/kucs-wizg.json",
+  app_token = "2TJ9miraJvdQBDfA9fTD4QNZ6",
+  email     = "gehami@alumni.stanford.edu",
+  password  = "albutt69!socrata"
+)
+cdc_2018 <- read.socrata(
+  "https://chronicdata.cdc.gov/resource/k86t-wghb.json",
+  app_token = "2TJ9miraJvdQBDfA9fTD4QNZ6",
+  email     = "gehami@alumni.stanford.edu",
+  password  = "albutt69!socrata"
+)
+
+
+
+
+
