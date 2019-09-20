@@ -29,6 +29,9 @@ sample_dat = function(dat, rows = 10){
 library(shiny)
 library(maps)
 library(tools)
+library(tidyverse)
+library(tidycensus)
+
 
 
 # put a message in console or server log; note this happens only when the app is started!
