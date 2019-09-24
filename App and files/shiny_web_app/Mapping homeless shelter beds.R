@@ -49,7 +49,7 @@ get_quantile = function(vec, quantile_bins, ret_factor = TRUE, ret_100_ile = FAL
   return(quant_val)
 }
 ######### geocoding the addresses ##########
-api <- readLines("apikey.txt")
+api <- readLines("C:\\Users\\gehami\\Documents\\API Keys\\apikey.txt")
 register_google(key = api)
 
 shelter_dat = read.csv("long-beach_housing_inventory_count.csv", stringsAsFactors = FALSE)
