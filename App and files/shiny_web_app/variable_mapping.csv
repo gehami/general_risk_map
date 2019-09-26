@@ -1,0 +1,34 @@
+﻿Variable name,Dataset,var_name,Operation
+Rate of binge drinking,CDC,binge_crudeprev,
+Mental health diagnoses,CDC,mhlth_crudeprev,
+Low education (no high school diploma),ACS,DP02_0066P,minus_1
+Young single mom in poverty,ACS,B17017_016,over_total_household
+Young single mom above poverty,ACS,B17017_045,over_total_household
+Young single dad in poverty,ACS,B17017_011,over_total_household
+Young single dad above poverty,ACS,B17017_040,over_total_household
+Unemployment rate,ACS,DP03_0009P,
+Households under poverty line,ACS,DP03_0119P,
+Lack health insurance (18-64),CDC,access2_crudeprev,
+Lack dental visits,CDC,dental_crudeprev,minus_1
+Regularly sleep <7 hours,CDC,sleep_crudeprev,
+No physical activity,CDC,lpa_crudeprev,
+Obesity rate,CDC,obesity_crudeprev,
+High blood pressure,CDC,bphigh_crudeprev,
+Diabetes,CDC,diabetes_crudeprev,
+High cholesterol,CDC,highchol_crudeprev,
+Asthma,CDC,casthma_crudeprev,
+Arthritis,CDC,arthritis_crudeprev,
+Heart Disease,CDC,chd_crudeprev,
+Cancer,CDC,cancer_crudeprev,
+Adults in labor force,ACS,DP03_0002P,
+Children in poverty,ACS,DP03_0129P,
+Renter households,ACS,DP04_0047P,
+Speak little to no english,ACS,DP02_0113P,
+Born outside the US,ACS,DP02_0093P,
+Moved to county in past year,ACS,DP02_0082P,
+Public transit to work,ACS,DP03_0021P,
+Walk to work,ACS,DP03_0022P,
+Households without a computer,ACS,DP02_0151P,
+Households without broadband,ACS,DP02_0152P,
+Total pop,ACS,B00001_001,
+Total households,ACS,B00002_001,

@@ -16,8 +16,6 @@ B17017_016 #female no husband <25 below poverty
 B17017_040 #male no wife <25 above poverty
 +
 B17017_045 #female no husband <25 above poverty
-
-
 )
 
 
@@ -77,7 +75,7 @@ DP03_0119, "% households under poverty line", #% families and people whose incom
 DP03_0129, % childeren in poverty", #% under 18 in poverty <18
 #transit
 DP03_0021P, "% public transit to work", #public transit to work excluding taxi cab 16+
-DP03_0021P, "% walk to work", #walk to work 16+
+DP03_0022P, "% walk to work", #walk to work 16+
 DP03_0025, "Mean commute time", #mean commute to work for commute
 #housing
 DP04_0047P, "% renter", #% of household units occupied by renters

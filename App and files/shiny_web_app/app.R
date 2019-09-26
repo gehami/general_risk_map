@@ -25,12 +25,13 @@ sample_dat = function(dat, rows = 10){
 
 
 ######### packages #########
-
 library(shiny)
+library(shinyWidgets)
 library(maps)
 library(tools)
 library(tidyverse)
 library(tidycensus)
+library(hash)
 
 
 
@@ -49,7 +50,7 @@ server <- function(input, output, session) {
       fluidRow(
         column(12,
                HTML("<h3><a href='?home'>Home</a> | ",
-                    "<a href='?old-faithful'>Old Faithful</a> |",
+                    "<a href='?map'>Map</a> |",
                     "<a href='?page3'>Nothing</a>",
                     "</h3>")
         )
@@ -59,7 +60,7 @@ server <- function(input, output, session) {
   ))
   
   # load server code for page specified in URL
-  validFiles = c("home.R")                     #    for security (use all lower-case
+  validFiles = c("home.R", "map.R")                     #    for security (use all lower-case
   #    names to prevent Unix case problems)
   fname = isolate(session$clientData$url_search)       # isolate() deals with reactive context
   if(nchar(fname)==0) { fname = "?home" }              # blank means home page
