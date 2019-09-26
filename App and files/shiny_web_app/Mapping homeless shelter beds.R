@@ -22,6 +22,20 @@ setwd("shiny_web_app")
 
 PROJ_4_STRING = CRS("+proj=longlat +datum=WGS84")
 
+#data for homelessness - 
+#binge drinking, mental health, low education, households under poverty, unemployment
+homeless_risk_vars = c('Low education (no high school diploma)',
+                       'Unemployment rate', 
+                       'Households under poverty line',
+                       'Rate of binge drinking', 
+                       'Mental health diagnoses')
+homeless_risk_weights = c(1,
+                          1,
+                          1,
+                          1,
+                          1)
+
+
 
 ############ Globally used functions #############
 #given a vector of numeric values, or something that can be coerced to numeric, returns a vector of the percentile each observation is within the vector.
@@ -148,66 +162,6 @@ shelter_spdf = sp::SpatialPointsDataFrame(coords = cbind(lon = as.numeric(shelte
 
 ####### mapping out the shelter_spdf ###########
 
-##### starter map #############
-lon_med = median(shelter_spdf@coords[,1])
-lat_med = median(shelter_spdf@coords[,2])
-
-map <- leaflet() %>% 
-  # add ocean basemap
-  addProviderTiles(providers$Esri.OceanBasemap) %>%
-  # add another layer with place names
-  addProviderTiles(providers$Hydda.RoadsAndLabels, group = 'Place names') %>%
-  # focus map in a certain area / zoom level
-  setView(lng = lon_med, lat = lat_med, zoom = 12) 
-
-
-
-
-
-
-##### Adding the shelters ######
-
-#adds a legend of circles to show size
-addLegendCustom <- function(map, colors, labels, sizes, opacity = 0.5, title = NULL){
-  colorAdditions <- paste0(colors, "; width:", sizes, "px; height:", sizes, "px; border-radius: 50%")
-  labelAdditions <- paste0("<div style='display: inline-block;height: ", sizes, "px; margin-top: 4px;line-height: ", sizes, "px;'>", labels, "</div>")
-  
-  return(addLegend(map, colors = colorAdditions, labels = labelAdditions, opacity = opacity, title = title))
-}
-
-
-
-QUANT_BINS = 5
-RET_FACTOR = TRUE
-RET_100_ILE = TRUE
-COMPARE_VEC = c(seq(0,1, length.out = QUANT_BINS+1))
-#see here for color palletes: https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/colorPaletteCheatsheet.pdf
-COLOR_PAL = 'Spectral'
-
-circle_marker_radius_values = log10(as.numeric(shelter_spdf@data$tot_beds)^2)*5
-color_val = get_quantile(as.numeric(shelter_spdf@data$utilization_rate), quantile_bins = QUANT_BINS, 
-                         ret_factor = RET_FACTOR, ret_100_ile = RET_100_ILE, compare_vec = COMPARE_VEC)
-
-map_pal = colorFactor(
-  palette = COLOR_PAL,
-  domain = color_val
-)
-
-shelter_map <- map %>% addCircleMarkers(data = shelter_spdf, radius = circle_marker_radius_values, 
-                                        label = lapply(shelter_spdf@data$label, HTML), stroke =TRUE, 
-                                        color = ~map_pal(color_val),
-                                        opacity = .8) %>% 
-  addLegend(position = "topright", pal = map_pal, title = "Bed Utilization Rate",
-            values = color_val) 
-  #%>% addLegendCustom(colors = 'grey', labels = round(seq(0, max(as.numeric(shelter_spdf@data$tot_beds), na.rm = TRUE), length.out = 5)),
-  #                 sizes = round(seq(0, max(circle_marker_radius_values*2, na.rm = TRUE), length.out = 5)), title = "Number of beds")
-
-
-######## adding the food banks ######
-food_and_shelter_map = shelter_map %>% addMarkers(data = food_banks_spdf, label = lapply(paste(sep ='<br/>',"Food Bank", food_banks_spdf$org, food_banks_spdf$phone), HTML))
-
-
-
 ######## Adding demographic data from the acs - lb_acs #######
 
 spdf = lb_city
@@ -217,6 +171,7 @@ shape = lb_city
 
 #given a single row in an spdf, returns spdf row with only the largest polygon (by area)
 get_largest_shape = function(spdf, row_id = 1){
+  require(sp)
   spolys = spdf@polygons[[1]]@Polygons
   max_area = 0
   for(n in seq_along(spolys)){
@@ -233,7 +188,7 @@ get_largest_shape = function(spdf, row_id = 1){
   return(ret_spdf)
 }
 #given two shapes (spdf), determines what %age of points one is within the other
-points_in_shape = function(shape, shape_within, ret_perc = TRUE){
+points_in_shape = function(shape, shape_within, ret_perc = TRUE, n = 1){
   points = SpatialPoints(shape_within[n,]@polygons[[1]]@Polygons[[1]]@coords, proj4string = shape_within@proj4string)
   if(ret_perc) return(length(which(!is.na(over(points, shape)[,1])))/nrow(points@coords))
   return(length(which(!is.na(over(points, shape)[,1]))))
@@ -241,12 +196,15 @@ points_in_shape = function(shape, shape_within, ret_perc = TRUE){
 #given all of the census tracts, returns the census tracts that are within the city limits and additional tracts 
 tracts_in_shape = function(tracts, shape, contain_threshold = .5){
   require(rgeos)
+  if(contain_threshold <= 0){
+    return(tracts[which(gIntersects(shape, tracts, byid = TRUE)),])
+  }
   contain_tracts = tracts[which(gContains(shape, tracts, byid = TRUE)),]
   if(is.numeric(contain_threshold) & contain_threshold < 1){
     border_tracts = tracts[which(gOverlaps(shape, tracts, byid = TRUE)),]
     keep_tracts = NULL
     for(n in seq_len(nrow(border_tracts))){
-      if(points_in_shape(shape, border_tracts, ret_perc = TRUE) > contain_threshold){
+      if(points_in_shape(shape, border_tracts, ret_perc = TRUE, n) > contain_threshold){
         keep_tracts = c(keep_tracts, n)
       }
     }
@@ -268,7 +226,7 @@ la_county = tracts('CA', 'Los Angeles', cb = TRUE)
 lb_city = places('CA', cb = TRUE)
 lb_city = lb_city[lb_city$NAME == CITY_NAME,] %>% get_largest_shape()
 
-lb_tracts = tracts_in_shape(la_county, lb_city, contain_threshold = .95)
+lb_tracts = tracts_in_shape(la_county, lb_city, contain_threshold = .8)
 
 acs_2017 = readRDS('data_tables/all_acs_dat_2017.rds')
 
@@ -296,6 +254,13 @@ for(n in seq_along(tracts_not_in_cdc)){
 
 lb_all = lb_acs
 lb_all@data = merge(lb_acs@data, cdc_merge, by = 'GEOID')
+
+
+######## Cleaning data, opening codebook, and and changing vars to numeric #########
+
+
+#reading in the data codebook
+data_code_book = read.csv('variable_mapping.csv', stringsAsFactors = FALSE)
 
 #making all of the columns that need to be numeric numeric
 for(n in data_code_book$var_name){
@@ -341,22 +306,7 @@ get_quantile = function(vec, quantile_bins, ret_factor = TRUE, ret_100_ile = FAL
 
 
 
-data_code_book = read.csv('variable_mapping.csv', stringsAsFactors = FALSE)
 
-
-#data for homelessness - 
-#binge drinking, mental health, low education, households under poverty, unemployment
-
-homeless_risk_vars = c('Rate of binge drinking', 
-                       'Mental health diagnoses',
-                       'Low education (no high school diploma)',
-                       'Unemployment rate', 
-                       'Households under poverty line')
-homeless_risk_weights = c(1,
-                          1,
-                          1,
-                          1,
-                          1)
 
 risk_vars = homeless_risk_vars
 risk_weights = homeless_risk_weights
@@ -428,25 +378,120 @@ lb_all@data$label = make_label_for_score(homeless_risk_vars, lb_all, data_code_b
 
 
 
-######## Making the map from the score ########
 
-TRACT_PAL = 'Spectral'
+##### starter map #############
+lon_med = mean(lb_all@bbox[1,])
+lat_med = mean(lb_all@bbox[2,])
+
+map <- leaflet(options = leafletOptions(minZoom = 10, zoomControl = FALSE)) %>% 
+  # add ocean basemap
+  # addProviderTiles(providers$Esri.OceanBasemap) %>%
+  # add another layer with place names
+  addProviderTiles(providers$Hydda.Full) %>%
+  # focus map in a certain area / zoom level
+  setView(lng = lon_med, lat = lat_med, zoom = 12) 
+
+
+
+
+
+
+##### Adding the shelters ######
+
+#adds a legend of circles to show size
+addLegendCustom <- function(map, colors, labels, sizes, opacity = 0.5, title = NULL){
+  colorAdditions <- paste0(colors, "; width:", sizes, "px; height:", sizes, "px; border-radius: 50%")
+  labelAdditions <- paste0("<div style='display: inline-block;height: ", sizes, "px; margin-top: 4px;line-height: ", sizes, "px;'>", labels, "</div>")
+  
+  return(addLegend(map, colors = colorAdditions, labels = labelAdditions, opacity = opacity, title = title))
+}
+
+
+
+QUANT_BINS = 5
+RET_FACTOR = TRUE
+RET_100_ILE = TRUE
+COMPARE_VEC = c(seq(0,1, length.out = QUANT_BINS+1))
+#see here for color palletes: https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/colorPaletteCheatsheet.pdf
+COLOR_PAL = 'Spectral'
+
+circle_marker_radius_values = log10(as.numeric(shelter_spdf@data$tot_beds)^2)*5
+color_val = get_quantile(as.numeric(shelter_spdf@data$utilization_rate), quantile_bins = QUANT_BINS, 
+                         ret_factor = RET_FACTOR, ret_100_ile = RET_100_ILE, compare_vec = COMPARE_VEC)
+
+map_pal = colorFactor(
+  palette = COLOR_PAL,
+  domain = color_val
+)
+
+shelter_map <- map %>% addCircleMarkers(data = shelter_spdf, radius = circle_marker_radius_values, 
+                                        label = lapply(shelter_spdf@data$label, HTML), stroke =TRUE, 
+                                        color = ~map_pal(color_val),
+                                        opacity = .8) %>% 
+  addLegend(position = "topright", pal = map_pal, title = "Bed Utilization Rate",
+            values = color_val) 
+#%>% addLegendCustom(colors = 'grey', labels = round(seq(0, max(as.numeric(shelter_spdf@data$tot_beds), na.rm = TRUE), length.out = 5)),
+#                 sizes = round(seq(0, max(circle_marker_radius_values*2, na.rm = TRUE), length.out = 5)), title = "Number of beds")
+
+
+######## adding the food banks ######
+food_and_shelter_map = shelter_map %>% addMarkers(data = food_banks_spdf, label = lapply(paste(sep ='<br/>',"Food Bank", food_banks_spdf$org, food_banks_spdf$phone), HTML))
+
+
+######## Making the map from the score ########
+addLegendCustom <- function(map, colors, labels, sizes, opacity = 0.5, title = NULL, position = 'bottomright'){
+  colorAdditions <- paste0(colors, "; width:", sizes, "px; height:", sizes, "px; border-radius: 50%")
+  labelAdditions <- paste0("<div style='display: inline-block;height: ", sizes, "px; margin-top: 0px;line-height: ", sizes, "px;'>", labels, "</div>")
+  
+  return(addLegend(map, colors = colorAdditions, labels = labelAdditions, opacity = opacity, title = title,
+                   position = position))
+}
+
+
+SHELTER_COLOR = 'green'
+SHELTER_RADIUS = 100
+FOOD_BANK_COLOR = 'blue'
+FOOD_BANK_RADIUS = 100
+LOCATION_STROKE = FALSE
+LOCATION_OPACITY = .8
+LOCATION_LEGEND_RADIUS = 10
+LOCATION_LEGEND_OPACITY = 1
+TRACT_PAL = 'RdYlGn'
+TRACT_OPACITY = .7
 tract_color_vals = get_quantile(lb_all@data$score, quantile_bins = 10)
 
 tract_pal = colorFactor(
   palette = TRACT_PAL, 
-  domain = tract_color_vals
+  domain = tract_color_vals,
+  reverse = TRUE
 )
 
-map_all = map %>% addPolygons(data = lb_all, fillColor = ~tract_pal(tract_color_vals), popup = lb_all@data$label, stroke = F,
-                              opacity = .8) %>% 
-  addCircleMarkers(data = shelter_spdf, radius = circle_marker_radius_values, 
-                   label = lapply(shelter_spdf@data$label, HTML), stroke =TRUE, 
-                   color = ~map_pal(color_val),
-                   opacity = .8) %>% 
-  addLegend(position = "topright", pal = map_pal, title = "Bed Utilization Rate",
-            values = color_val) %>%
-  addMarkers(data = food_banks_spdf, label = lapply(paste(sep ='<br/>',"Food Bank", food_banks_spdf$org, food_banks_spdf$phone), HTML))
+
+
+u_tract_color_vals = unique(tract_color_vals[!is.na(tract_color_vals)])
+legend_val = u_tract_color_vals[order(u_tract_color_vals)][c(1,length(u_tract_color_vals))]
+
+map_all = map %>% addPolygons(data = lb_all, fillColor = ~tract_pal(tract_color_vals), popup = lb_all@data$label, stroke = T,
+                              fillOpacity = TRACT_OPACITY, , weight = 1, opacity = 1, color = 'white', dashArray = '3',
+                              highlightOptions = highlightOptions(color = 'white', weight = 2,
+                                                                  bringToFront = FALSE, dashArray = FALSE)) %>% 
+  addCircles(data = shelter_spdf, radius = SHELTER_RADIUS, 
+                   popup = lapply(shelter_spdf@data$label, HTML), stroke = LOCATION_STROKE, 
+                   label = shelter_spdf@data$org,
+                   color = SHELTER_COLOR,
+                   fillOpacity = LOCATION_OPACITY) %>%
+  addCircles(data = food_banks_spdf, 
+             popup = lapply(paste(sep ='<br/>',"Food Bank", food_banks_spdf$org, food_banks_spdf$phone), HTML),
+             label = food_banks_spdf@data$org,
+             stroke = LOCATION_STROKE,
+             radius = FOOD_BANK_RADIUS,
+             color = FOOD_BANK_COLOR,
+             fillOpacity = LOCATION_OPACITY) %>%
+  addLegend(colors = tract_pal(legend_val[length(legend_val):1]), opacity = 0.7, position = 'bottomright',
+            title = 'Risk factors level', labels = c('High (90%ile)', 'Low (10%ile)')) %>%
+  addLegendCustom(colors = c(SHELTER_COLOR, FOOD_BANK_COLOR), labels = c('Shelters', 'Food banks'),
+                  sizes = LOCATION_LEGEND_RADIUS, title = NULL, opacity = LOCATION_LEGEND_OPACITY,
+                  position = 'bottomright')
 
 
 

@@ -36,6 +36,18 @@ cdc_2016 = cdc_2016[,grep('95ci', colnames(cdc_2016), invert = TRUE)]
 cdc_2017 = cdc_2017[,grep('95ci', colnames(cdc_2017), invert = TRUE)]
 cdc_2018 = cdc_2018[,grep('95ci', colnames(cdc_2018), invert = TRUE)]
 
+
+#fixing the ventura name and any others with parantheses
+cdc_2016$placename = gsub('[[:space:]]*\\([[:print:]]*\\)', '', cdc_2016$placename)
+cdc_2017$placename = gsub('[[:space:]]*\\([[:print:]]*\\)', '', cdc_2017$placename)
+cdc_2018$placename = gsub('[[:space:]]*\\([[:print:]]*\\)', '', cdc_2018$placename)
+
+#fixing Boise City to just Boise
+cdc_2016$placename = gsub('Boise City', 'Boise', cdc_2016$placename)
+cdc_2017$placename = gsub('Boise City', 'Boise', cdc_2017$placename)
+cdc_2018$placename = gsub('Boise City', 'Boise', cdc_2018$placename)
+
+
 saveRDS(cdc_2016, 'data_tables/cdc_2016.rds')
 saveRDS(cdc_2017, 'data_tables/cdc_2017.rds')
 saveRDS(cdc_2018, 'data_tables/cdc_2018.rds')
