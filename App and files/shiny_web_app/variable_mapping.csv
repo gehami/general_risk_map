@@ -24,7 +24,7 @@ Adults in labor force,ACS,DP03_0002P,
 Children in poverty,ACS,DP03_0129P,
 Renter households,ACS,DP04_0047P,
 Speak little to no english,ACS,DP02_0113P,
-Born outside the US,ACS,DP02_0093P,
+Born outside the US,ACS,DP02_0093P,over_total_household
 Moved to county in past year,ACS,DP02_0082P,
 Public transit to work,ACS,DP03_0021P,
 Walk to work,ACS,DP03_0022P,
