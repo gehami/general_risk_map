@@ -700,6 +700,9 @@ shelter_map <- map %>% addCircleMarkers(data = shelter_spdf, radius = circle_mar
 ######## adding the food banks ######
 food_and_shelter_map = shelter_map %>% addMarkers(data = food_banks_spdf, label = lapply(paste(sep ='<br/>',"Food Bank", food_banks_spdf$org, food_banks_spdf$phone), HTML))
 
+#add an outline of long beach here
+food_and_shelter_map_with_outline = food_and_shelter_map %>% addPolygons(data = lb_city, fillOpacity = 0,
+                                                                         stroke = TRUE, color = 'black', opacity = 1)
 
 ######## Making the map from the score ########
 addLegendCustom <- function(map, colors, labels, sizes, opacity = 0.5, title = NULL, position = 'bottomright'){

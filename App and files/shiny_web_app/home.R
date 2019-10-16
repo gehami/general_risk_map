@@ -47,6 +47,11 @@ QOL_CHOICES = c(
   'Households without broadband'
 )
 
+#Understanding the year range that should be available in the app
+#since cdc data only goes back to 2016, we are cutting the year range off at 2016 minimum
+YEAR_RANGE = c(2016,2018)
+
+
 #loading one cdc data to know what cities we have cdc data on
 cdc_2018 = readRDS('data_tables/cdc_2018.rds')
 cities_cdc = paste0(cdc_2018$placename[!duplicated(cdc_2018$placename)], ' ', cdc_2018$stateabbr[!duplicated(cdc_2018$placename)])
@@ -64,7 +69,7 @@ if(file.exists('inputs_outputs/home_inputs.rds')){
 }else{
   inputs = hash()
   inputs[['cities']] <- ''
-  inputs[['year_range']] <- c(2013,2018)
+  inputs[['year_range']] <- YEAR_RANGE
   inputs[['violence_factors']] <- ''
   inputs[['health_factors']] <- ''
   inputs[['economics_factors']] <- ''
@@ -115,6 +120,10 @@ output$pageStub <- renderUI(tagList(
                     label = 'Risk factors for violence/delinquency',
                     circle = FALSE
                   ),
+                  # selectizeInput(
+                  #   'violence_factors', 'Risk factors for violence/delinqunecy',
+                  #   choices = VIOLENCE_CHOICES, selected = violence_risk_factors
+                  # ),
                   dropdownButton(
                     checkboxGroupInput(
                       'health_factors', 'Community health factors',
@@ -143,7 +152,7 @@ output$pageStub <- renderUI(tagList(
                     circle = FALSE
                   ),
                   sliderInput('year_range', 'Which years should we look at?',
-                              2013, 2018, value = year_range),
+                              YEAR_RANGE[1], YEAR_RANGE[2], value = year_range),
                   actionBttn('map_it', 'Map it')
                 )
            )
