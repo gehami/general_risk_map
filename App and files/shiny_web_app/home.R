@@ -32,7 +32,7 @@ HEALTH_CHOICES = c(
 )
 ECONOMIC_CHOICES = c(
   'Unemployment rate',
-  'Adults in labor force',
+  'Adults out of labor force',
   'Households under poverty line',
   'Children in poverty',
   'Renter households'

@@ -196,15 +196,55 @@ clipr::write_clip(state$NAME)
 #HONOLULU SEEMS TO HAVE AN EAST HONOLULU AND AN URBAN HONOLULU. defaulted to urban honolulu
 
 
-
+saveRDS(tract_city_dictionary, 'data_tables/tract_city_dictionary.rds')
 
 ###### filtering the acs data down to only the tracts in the 500 cdc cities - acs_hash ##########
 
 acs_hash = hash::hash()
 years = seq(2014, 2018)
+vars_needed = read.csv('variable_mapping.csv', stringsAsFactors = FALSE, header = TRUE)
+acs_codebook = vars_needed[vars_needed$Dataset == 'ACS',]
+
+
 for(year in years){
   if(!(year %in% keys(acs_hash))){
-    acs_hash[[as.character(year)]] = readRDS(paste0('data_tables/all_acs_dat_', as.character(year-1), '.rds'))
+    acs_dat = readRDS(paste0('data_tables/all_acs_dat_', as.character(year-1), '.rds'))
+    
+    total_household = acs_dat[,acs_codebook$var_name[acs_codebook$ï..Variable.name == 'Total households']]
+    total_pop = acs_dat[,acs_codebook$var_name[acs_codebook$ï..Variable.name == 'Total pop']]
+    #conducting operations and creating new_acs_dat
+    new_acs_dat = data.frame(GEOID = acs_dat$GEOID)
+    for(n in which(!duplicated(acs_codebook$Operation) | acs_codebook$Operation == '')){
+      if(acs_codebook$Operation[n] == ''){
+        new_acs_dat = data.frame(new_acs_dat,acs_dat[,acs_codebook$var_name[n]], stringsAsFactors = FALSE)
+        colnames(new_acs_dat)[ncol(new_acs_dat)] = acs_codebook$Name[n]
+      }else{
+        var_operation = acs_codebook$Operation[n]
+        if(length(which(acs_codebook$Operation == var_operation))<2){
+          new_var = acs_dat[,acs_codebook$var_name[acs_codebook$Operation == var_operation]]
+        }else{
+          new_var = rowSums(acs_dat[,acs_codebook$var_name[acs_codebook$Operation == var_operation]]) #if there are multiple vars under the same operation, adds them together first
+        }
+        if(grepl('minus', var_operation, ignore.case = TRUE)){ #if the var needs to be a number subtracted by the var (usually to reverse the direction of a variable), does it
+          minus_number = gsub('([[:print:]]*)(minus)(_*)([0-9]+)([[:print:]]*)', '\\4', var_operation) %>% as.numeric()
+          new_var = minus_number - new_var
+        }
+        if(grepl('over_total_household', var_operation, ignore.case = TRUE)){ #if a var needs to be divided by the total household population
+          new_var = new_var/total_household
+        }
+        if(grepl('over_total_pop', var_operation, ignore.case = TRUE)){ #if a var needs to be divided by the total population
+          new_var = new_var/total_pop
+        }
+        if(grepl('times', var_operation, ignore.case = TRUE)){ #if the var needs to be multiplied by a number
+          times_number = gsub('([[:print:]]*)(times)(_*)([0-9]+)([[:print:]]*)', '\\4', var_operation) %>% as.numeric()
+          new_var = new_var * times_number
+        }
+        new_acs_dat = data.frame(new_acs_dat, new_var, stringsAsFactors = FALSE)
+        colnames(new_acs_dat)[ncol(new_acs_dat)] = acs_codebook$Name[n]
+      }
+    }
+    
+    acs_hash[[as.character(year)]] = new_acs_dat
   }
 }
 
@@ -217,11 +257,11 @@ for(acs_key in keys(acs_hash)){
 }
 
 
+
 saveRDS(acs_hash, file = 'data_tables/acs_dat_hash.rds')
 
 
 ########## saving all do the cities that I need as their own spatial files of tracts ##########
-state.abb
 all_us_tracts = tracts(state = state.abb[1])
 for(state_abb in c(state.abb[-1], 'DC')){
   all_us_tracts = rbind(all_us_tracts, tracts(state = state_abb))
