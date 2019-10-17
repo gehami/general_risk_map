@@ -151,8 +151,8 @@ output$pageStub <- renderUI(tagList(
                     label = 'Quality-of-life factors',
                     circle = FALSE
                   ),
-                  sliderInput('year_range', 'Which years should we look at?',
-                              YEAR_RANGE[1], YEAR_RANGE[2], value = year_range),
+                  # sliderInput('year_range', 'Which years should we look at?',
+                  #             YEAR_RANGE[1], YEAR_RANGE[2], value = year_range),
                   actionBttn('map_it', 'Map it')
                 )
            )
@@ -165,7 +165,8 @@ observeEvent(input$year_range,{
 observeEvent(input$map_it,{
   inputs = hash()
   inputs[['cities']] <- input$city
-  inputs[['year_range']] <- input$year_range
+  # inputs[['year_range']] <- input$year_range
+  inputs[['year_range']] <- YEAR_RANGE
   inputs[['violence_factors']] <- input$violence_factors
   inputs[['health_factors']] <- input$health_factors
   inputs[['economics_factors']] <- input$economic_factors

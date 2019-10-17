@@ -32,7 +32,7 @@ library(tools)
 library(tidyverse)
 library(tidycensus)
 library(hash)
-
+library(leaflet)
 
 
 # put a message in console or server log; note this happens only when the app is started!
