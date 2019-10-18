@@ -245,7 +245,7 @@ make_full_spdf = function(spdf, data_code_book, risk_vars, risk_weights, quantil
   
   spdf@data = merge(spdf@data, calculate_score(risk_vars, risk_weights, spdf, data_code_book), by = 'GEOID')
   
-  spdf@data$label = make_label_for_score(risk_vars, spdf, codebook, quantile_bins)
+  spdf@data$label = make_label_for_score(risk_vars, spdf, data_code_book, quantile_bins)
   
   return(spdf)
 }
