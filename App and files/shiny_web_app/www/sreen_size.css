@@ -1,4 +1,6 @@
 
+@import url('https://fonts.googleapis.com/css?family=Montserrat|Open+Sans|Raleway|Roboto|Roboto+Condensed&display=swap');
+
 
 @media only screen and (max-width: 769px){
   .no_small_screen{
@@ -14,8 +16,44 @@
 
 .factor_selector{
   margin-bottom: 2vh;
+  margin-left: 1vw;
+  margin-right: 1vw;
+  text-align: center;
+  display: inline-block;
+}
+
+.warning_text{
+  color: red;
+}
+
+.splash_front{
+/*  background-image: url("City - San Diego.jpg");
+  background-color: rgba(2, 2, 109, 0.1);*/
+  /*height: 50vh;*/
+  margin-bottom: 5vh;
+  background-repeat: no-repeat;
+  text-align: center;
+  max-width: 800px;
+  display: inline-block;
+  
+
+}
+
+.center_wrapper{
+  text-align: center;
+}
+
+.splash_text{
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+  
 }
 
 
-
-
+.shiny-notification{
+  position: fixed;
+  top: 80vh;
+  left: 0;
+  right: 0;
+  margin: 10% auto;
+}

@@ -1,9 +1,8 @@
 #map page
 
-# AVAILABLE_CDC_YEARS = seq()
 
+##### Reading in data from prior page #########
 
-# if(grepl('shiny_web_app'))
 # setwd('shiny_web_app')
 
 #reading in inputs from prior page
@@ -11,39 +10,56 @@ inputs = readRDS('inputs_outputs/home_inputs.rds')
 # print(inputs)
 
 
-####### Reading in data ########
 
-#reading in the cdc data
-if(!exists("cdc_hash")){cdc_hash = hash()}
-years = seq(inputs$year_range[1], inputs$year_range[2])
-for(year in years){
-  if(!(year %in% keys(cdc_hash))){
-    cdc_data = readRDS(paste0('data_tables/cdc_', as.character(year), '.rds'))
-    colnames(cdc_data)[colnames(cdc_data) == 'tractfips'] = 'GEOID'
-    cdc_hash[[as.character(year)]] = cdc_data
-  }
-}
+city_all_spdf_hash = readRDS(file = 'inputs_outputs/city_all_spdf_hash.rds')
+data_code_book = readRDS(file = 'inputs_outputs/data_code_book.rds')
+risk_vars = readRDS(file = 'inputs_outputs/risk_vars.rds')
+data_factors = readRDS(file = 'inputs_outputs/data_factors.rds')
+initial_map = readRDS(file = 'inputs_outputs/initial_map.rds')
 
-#reading in the acs data. Note that the year of the data is actually the year before the key 
-#(i.e. acs_hash[['2018']] actually stores 2017 acs data), becuase the acs data is one year behind the cdc data. 
-if(!exists("acs_hash")){acs_hash = readRDS('data_tables/acs_dat_hash.rds')}
 
-#reading in the spatial data
-if(!exists('trimmed_tracts')){trimmed_tracts = readRDS('data_tables/trimmed_tract_data.rds')}
 
-#reading in the tract_city_database
-if(!exists('tract_city_dictionary')){tract_city_dictionary = readRDS('data_tables/tract_city_dictionary.rds')}
+########## UI ##############
 
-#reading in codebook to translate the names of the acs vars to their name in the dataset
-if(!exists('codebook')){
-  codebook = read.csv('variable_mapping.csv', stringsAsFactors = FALSE)
-  }
-
-#get just the tracts from the cities that we care about
-city_tracts = tract_city_dictionary[inputs$cities] %>% values() %>% unlist() %>% as.character()
-
-#identifying which tracts to use
-tracts_map = trimmed_tracts[trimmed_tracts$GEOID %in% city_tracts,]
+output$pageStub <- renderUI(tagList(
+  # tags$link(rel = "stylesheet", type = "text/css", href = "screen_size.css"),
+  includeCSS('www/sreen_size.css'),
+  withTags({
+    div(class = "no_small_screen", 
+        bsCollapse(id = "sliders", 
+                   bsCollapsePanel('Click here to edit weight of metrics',
+                                   fluidRow(
+                                     column(10, h4("Increase/decrease the amount each metric goes into the overall risk metric. To recalculate overall risk, click 'Submit'"),
+                                            h5("For example, sliding one metric up to 2 will make it twice as important in calculating the overall risk")),
+                                     column(2, actionBttn('recalculate_weights', 'Submit'))
+                                   ),
+                                   fluidRow(
+                                     column(4, uiOutput('sliders_1')),
+                                     column(4, uiOutput('sliders_2')),
+                                     column(4, uiOutput('sliders_3'))
+                                   ), style = "info"
+                   )
+        )
+    )
+    
+  }),
+  fluidRow(
+    # column(5,
+    #        HTML("<p>This is the home page of our excellent web site.</p>",
+    #             "<p>There's a second page that displays data about Old Faithful.",
+    #             "On that page you can move the slider to increase or decrease the",
+    #             "number of bins in the histogram.</p>",
+    #             "<p>The third link goes to a page that doesn't exist to demonstrate",
+    #             "error handling for bad URLs.</p>")
+    # ),column(7,
+    withTags({
+      div(class = "map_container",
+            leaflet::leafletOutput('map', height = '85vh')
+          )
+    })
+  )
+)
+)
 
 ####### Contstants #########
 
@@ -60,13 +76,15 @@ SLIDER_MIN = 0
 SLIDER_MAX = 10
 INITIAL_SLIDER_VALUE = 1
 MIN_SLIDER_STEP = 0.5
-param_hash = hash::copy(inputs)
-hash::delete(c('cities', 'year_range'), param_hash)
-data_factors = param_hash %>% values() %>% unlist()
-if(length(dim(data_factors)) > 0){
-  data_factors = as.character(data_factors)
-  names(data_factors) = rep(keys(param_hash), length(data_factors))
-}
+# param_hash = hash::copy(inputs)
+# hash::delete(c('cities', 'year_range'), param_hash)
+# data_factors = param_hash %>% values() %>% unlist()
+# if(length(dim(data_factors)) > 0){
+#   data_factors = as.character(data_factors)
+#   names(data_factors) = rep(keys(param_hash), length(data_factors))
+# }
+data_factors = readRDS('inputs_outputs/data_factors.rds')
+
 
 ############ Globally used functions #############
 #given a vector of numeric values, or something that can be coerced to numeric, returns a vector of the percentile each observation is within the vector.
@@ -250,9 +268,6 @@ make_full_spdf = function(spdf, data_code_book, risk_vars, risk_weights, quantil
   return(spdf)
 }
 
-
-
-
 #given the spdf, returns the loc_dist_matrix
 get_loc_dist_matrix = function(spdf, MAX_LOC_DIST = 1){
   #initializing the matrix
@@ -335,7 +350,7 @@ neib_avg_scores = function(x_vars, ids, loc_dist_matrix, na.rm = TRUE){
   
 }
 #given the spdf, risk_vars, and the codebook, returns the independent vars for predicting
-get_ind_vars_for_model = function(spdf, risk_vars, data_code_book){
+get_ind_vars_for_model = function(spdf, risk_vars, data_code_book, MAX_LOC_DIST = 1){
   x_vars = spdf@data[data_code_book$Name[data_code_book$risk_factor_name %in% risk_vars]]
   #making sure all of the columns are numeric
   for(n in seq_len(ncol(x_vars))) x_vars[,n] = as.numeric(x_vars[,n])
@@ -351,9 +366,9 @@ get_ind_vars_for_model = function(spdf, risk_vars, data_code_book){
   return(big_ind_dat)
 }
 #given the full spdf hash, inputs list, risk_vars, and codebook, returns the 1) raw predicted scores, 2) pred score quantiles, and 3) labels for the pred map
-get_predicted_scores_and_labels = function(city_all_spdf_hash, inputs, risk_vars, data_code_book, quantile_bins = 10){
+get_predicted_scores_and_labels = function(city_all_spdf_hash, inputs, risk_vars, risk_weights, data_code_book, quantile_bins = 10, MAX_LOC_DIST = 1){
   
-  ind_vars = get_ind_vars_for_model(city_all_spdf_hash[[as.character(inputs$year_range[1])]], risk_vars, data_code_book)
+  ind_vars = get_ind_vars_for_model(city_all_spdf_hash[[as.character(inputs$year_range[1])]], risk_vars, data_code_book, MAX_LOC_DIST)
   dep_dat = calculate_score(risk_vars, risk_weights, city_all_spdf_hash[[as.character(inputs$year_range[2])]], data_code_book)
   
   
@@ -441,91 +456,12 @@ make_map = function(present_spdf, past_spdf, inputs, TRACT_PAL = 'RdYlGn', TRACT
   return(map_all)
 }
 
-
-######## Createing the initial map #########
-
-
-city_all_dat_hash = hash::hash() 
-for(year in inputs$year_range[1]:inputs$year_range[2]){
-  acs_year = acs_hash[[as.character(year)]]
-  acs_year = acs_year[acs_year$GEOID %in% city_tracts,]
-  cdc_year = cdc_hash[[as.character(year)]]
-  cdc_year = cdc_year[cdc_year$GEOID %in% city_tracts,]
-  city_all_dat_hash[[as.character(year)]] = merge(cdc_year[!duplicated(cdc_year$GEOID),], acs_year[!duplicated(acs_year$GEOID),], by = 'GEOID')
-}
-
-city_all_spdf_hash = hash::hash()
-for(year in inputs$year_range[1]:inputs$year_range[2]){
-  city_data = merge(tracts_map@data, city_all_dat_hash[[as.character(year)]], by = 'GEOID')
-  city_spdf = tracts_map[tracts_map$GEOID %in% city_data$GEOID,]
-  city_spdf = city_spdf[order(city_spdf$GEOID),]
-  city_data = city_data[order(city_data$GEOID),]
-  city_spdf@data = city_data
-  city_all_spdf_hash[[as.character(year)]] = city_spdf
-}
-
-#creating the scores
-risk_vars = data_factors
-risk_weights = rep(INITIAL_WEIGHTS, length(risk_vars))
-spdf = city_all_spdf_hash[['2018']]
-data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
-quantile_bins = QUANTILE_BINS
-
-
-
-
-past_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[1])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
-present_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[2])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
-pred_list = get_predicted_scores_and_labels(city_all_spdf_hash, inputs, risk_vars, data_code_book, QUANTILE_BINS)
-present_spdf@data$pred_score = pred_list$raw_score
-present_spdf@data$pred_quantile = pred_list$score_quantile
-present_spdf@data$pred_label = pred_list$label
-
-initial_map = make_map(present_spdf, past_spdf, inputs, TRACT_PAL, TRACT_OPACITY, QUANTILE_BINS)
-
-########## UI ##############
-
-output$pageStub <- renderUI(tagList(
-  # tags$link(rel = "stylesheet", type = "text/css", href = "screen_size.css"),
-  includeCSS('www/sreen_size.css'),
-  withTags({
-    div(class = "no_small_screen", 
-        bsCollapse(id = "sliders", 
-                   bsCollapsePanel('Click here to edit weight of metrics',
-                                   fluidRow(
-                                     column(10, h4("Increase/decrease the amount each metric goes into the overall risk metric. To recalculate overall risk, click 'Submit'"),
-                                            h5("For example, sliding one metric up to 2 will make it twice as important in calculating the overall risk")),
-                                     column(2, actionBttn('recalculate_weights', 'Submit'))
-                                   ),
-                                   fluidRow(
-                                     column(4, uiOutput('sliders_1')),
-                                     column(4, uiOutput('sliders_2')),
-                                     column(4, uiOutput('sliders_3'))
-                                   ), style = "info"
-                   )
-        )
-    )
-    
-  }),
-  fluidRow(
-    # column(5,
-    #        HTML("<p>This is the home page of our excellent web site.</p>",
-    #             "<p>There's a second page that displays data about Old Faithful.",
-    #             "On that page you can move the slider to increase or decrease the",
-    #             "number of bins in the histogram.</p>",
-    #             "<p>The third link goes to a page that doesn't exist to demonstrate",
-    #             "error handling for bad URLs.</p>")
-    # ),column(7,
-    withTags({
-      div(class = "map_container",
-            leaflet::leafletOutput('map', height = '85vh')
-          )
-    })
-  )
-)
-)
+#########  Server back-end #########
 
 output$map <- renderLeaflet(initial_map)
+
+
+######### Sliders ##########
 
 output$sliders_1 <- renderUI({
   lapply(data_factors[seq(1, length(data_factors), by = 3)], function(i){
@@ -552,6 +488,11 @@ if(length(data_factors) > 2){
 
 observeEvent(input$recalculate_weights,{
   
+  progress <- shiny::Progress$new()
+  on.exit(progress$close())
+  
+  progress$set(message = "Recording inputs", value = 0)
+  
   #getting the new weights
   new_weights = rep(0, length(data_factors))
   for(n in seq_along(data_factors)) new_weights[n] = input[[data_factors[n]]]
@@ -560,22 +501,34 @@ observeEvent(input$recalculate_weights,{
   risk_weights = new_weights
   print(risk_vars)
   print(risk_weights)
-  spdf = city_all_spdf_hash[['2018']]
-  data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
+  # spdf = city_all_spdf_hash[['2018']]
+  data_code_book = data_code_book
   quantile_bins = QUANTILE_BINS
 
+  progress$set(message = "Redefining 2016 metrics", value = .10)
+  
   past_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[1])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
+
+  progress$set(message = "Redefining 2018 metrics", value = .30)
+  
   present_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[2])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
-  pred_list = get_predicted_scores_and_labels(city_all_spdf_hash, inputs, risk_vars, data_code_book, QUANTILE_BINS)
+
+  progress$set(message = "Building predictive model", value = .50)
+  
+  pred_list = get_predicted_scores_and_labels(city_all_spdf_hash, inputs, risk_vars, risk_weights, data_code_book, QUANTILE_BINS, MAX_LOC_DIST)
   present_spdf@data$pred_score = pred_list$raw_score
   present_spdf@data$pred_quantile = pred_list$score_quantile
   present_spdf@data$pred_label = pred_list$label
 
+  progress$set(message = "Updating map", value = .90)
+  
   new_map = make_map(present_spdf, past_spdf, inputs, TRACT_PAL, TRACT_OPACITY, QUANTILE_BINS)
+  
   
   output$map = renderLeaflet(new_map)
   
   updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
+  # progress$close()
   
 })
 

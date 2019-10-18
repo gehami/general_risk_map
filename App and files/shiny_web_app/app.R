@@ -37,6 +37,7 @@ library(magrittr)
 library(shinyBS)
 library(sp)
 library(rgeos)
+library(shinyjs)
 
 # put a message in console or server log; note this happens only when the app is started!
 cat("uiStub application started...\n")
