@@ -12,8 +12,9 @@ VIOLENCE_CHOICES = c(#need to do some research on what variables can be selected
   'Mental health diagnoses',
   'Low education (no high school diploma)',
   'Young single parents (<25)',
-  'Unemployment rate',
-  'Households under poverty line'
+  'Children in poverty'
+  # 'Unemployment rate',
+  # 'Households under poverty line'
 )
 HEALTH_CHOICES = c(
   'Lack health insurance (18-64)',
@@ -34,7 +35,6 @@ ECONOMIC_CHOICES = c(
   'Unemployment rate',
   'Adults out of labor force',
   'Households under poverty line',
-  'Children in poverty',
   'Renter households'
 )
 QOL_CHOICES = c(
@@ -83,20 +83,20 @@ economic_factors = inputs[['economics_factors']]
 qol_factors = inputs[['qol_factors']]
 year_range = inputs[['year_range']]
 
-print(inputs)
+# print(inputs)
 
 ##### UI ##########
 
 output$pageStub <- renderUI(tagList(
   tags$head(tags$script(redirect_jscode)),
+  includeCSS('www/sreen_size.css'),
   fluidRow(
     column(5,
-           HTML("<p>This is the home page of our excellent web site.</p>",
-                "<p>There's a second page that displays data about Old Faithful.",
-                "On that page you can move the slider to increase or decrease the",
-                "number of bins in the histogram.</p>",
-                "<p>The third link goes to a page that doesn't exist to demonstrate",
-                "error handling for bad URLs.</p>")
+           HTML("<p>Welcome to the city risk factors map. To see how to use this tool, click on <a href = 'https://www.google.com'> this link to the tutorial</a></p>",
+                "<p>On this page you can select the risk factors you would like to explore.",
+                "Risk factors cover topics on community health, economics, potential for community violence, and quality of life.",
+                "All metrics are scored from low risk (0%) to high risk (100%), with a high-risk neighborhood displaying the most need for support based on our data.</p>"
+                )
     ),
     column(7, 
            selectizeInput(
@@ -112,19 +112,18 @@ output$pageStub <- renderUI(tagList(
   fluidRow(column(5),
            column(7,
                   h3('Select the metrics of interest'),
-                  dropdownButton(
-                    checkboxGroupInput(
-                      'violence_factors', 'Risk factors for violence/delinqunecy',
-                      choices = VIOLENCE_CHOICES, selected = violence_risk_factors
-                    ),
-                    label = 'Risk factors for violence/delinquency',
-                    circle = FALSE
-                  ),
-                  # selectizeInput(
-                  #   'violence_factors', 'Risk factors for violence/delinqunecy',
-                  #   choices = VIOLENCE_CHOICES, selected = violence_risk_factors
-                  # ),
-                  dropdownButton(
+
+                  div(class = "factor_selector",
+                      dropdownButton(
+                        checkboxGroupInput(
+                          'violence_factors', 'Risk factors for violence/delinqunecy',
+                          choices = VIOLENCE_CHOICES, selected = violence_risk_factors
+                        ),
+                        label = 'Risk factors for violence/delinquency',
+                        circle = FALSE
+                  )),
+                  div(class = "factor_selector", 
+                    dropdownButton(
                     checkboxGroupInput(
                       'health_factors', 'Community health factors',
                       choices = HEALTH_CHOICES,
@@ -132,8 +131,9 @@ output$pageStub <- renderUI(tagList(
                     ),
                     label = 'Community health factors',
                     circle = FALSE
-                  ),
-                  dropdownButton(
+                  )),
+                  div(class = "factor_selector",
+                    dropdownButton(
                     checkboxGroupInput(
                       'economic_factors', 'Economic factors',
                       choices = ECONOMIC_CHOICES,
@@ -141,8 +141,9 @@ output$pageStub <- renderUI(tagList(
                     ),
                     label = 'Economic factors',
                     circle = FALSE
-                  ),
-                  dropdownButton(
+                  )),
+                  div(class = "factor_selector",
+                    dropdownButton(
                     checkboxGroupInput(
                       'qol_factors', 'Quality-of-life factors',
                       choices = QOL_CHOICES, 
@@ -150,10 +151,12 @@ output$pageStub <- renderUI(tagList(
                     ),
                     label = 'Quality-of-life factors',
                     circle = FALSE
-                  ),
+                  )),
                   # sliderInput('year_range', 'Which years should we look at?',
                   #             YEAR_RANGE[1], YEAR_RANGE[2], value = year_range),
-                  actionBttn('map_it', 'Map it')
+                  actionBttn('map_it', 'Map it'),
+                  uiOutput('input_warning')
+
                 )
            )
 ))
@@ -163,17 +166,24 @@ observeEvent(input$year_range,{
 })
 
 observeEvent(input$map_it,{
-  inputs = hash()
-  inputs[['cities']] <- input$city
-  # inputs[['year_range']] <- input$year_range
-  inputs[['year_range']] <- YEAR_RANGE
-  inputs[['violence_factors']] <- input$violence_factors
-  inputs[['health_factors']] <- input$health_factors
-  inputs[['economics_factors']] <- input$economic_factors
-  inputs[['qol_factors']] <- input$qol_factors
-  print(inputs)
-  saveRDS(inputs, 'inputs_outputs/home_inputs.rds')
-  session$sendCustomMessage("mymessage", "mymessage")
+  if(is.null(c(input$violence_factors, input$health_factors, input$economic_factors, input$qol_factors))){
+    print("no factors present")
+    output$input_warning <- renderUI(h5("Please select at least 1 risk factor from the 4 drop-down menus above"))
+  }else{
+    output$warn = NULL
+    inputs = hash()
+    inputs[['cities']] <- input$city
+    # inputs[['year_range']] <- input$year_range
+    inputs[['year_range']] <- YEAR_RANGE
+    inputs[['violence_factors']] <- input$violence_factors
+    inputs[['health_factors']] <- input$health_factors
+    inputs[['economics_factors']] <- input$economic_factors
+    inputs[['qol_factors']] <- input$qol_factors
+    print(inputs)
+    saveRDS(inputs, 'inputs_outputs/home_inputs.rds')
+    session$sendCustomMessage("mymessage", "mymessage")
+    
+  }
 })
 
 

@@ -8,7 +8,7 @@
 
 #reading in inputs from prior page
 inputs = readRDS('inputs_outputs/home_inputs.rds')
-print(inputs)
+# print(inputs)
 
 
 ####### Reading in data ########
@@ -56,7 +56,17 @@ MAX_LOC_DIST = 1 #looking at neighbords directly next to tract
 
 TRACT_PAL = 'RdYlGn'
 TRACT_OPACITY = .7
-
+SLIDER_MIN = 0
+SLIDER_MAX = 10
+INITIAL_SLIDER_VALUE = 1
+MIN_SLIDER_STEP = 0.5
+param_hash = hash::copy(inputs)
+hash::delete(c('cities', 'year_range'), param_hash)
+data_factors = param_hash %>% values() %>% unlist()
+if(length(dim(data_factors)) > 0){
+  data_factors = as.character(data_factors)
+  names(data_factors) = rep(keys(param_hash), length(data_factors))
+}
 
 ############ Globally used functions #############
 #given a vector of numeric values, or something that can be coerced to numeric, returns a vector of the percentile each observation is within the vector.
@@ -109,7 +119,7 @@ in_match_order = function(vec_in, vec){
 
 
 
-######## Createing the initial map #########
+############# map functions ########
 #Given therisk vars, risk weights, spdf, and codebook, calculates the overall risk factor score
 calculate_score = function(risk_vars, risk_weights, spdf, data_code_book){
   
@@ -123,10 +133,17 @@ calculate_score = function(risk_vars, risk_weights, spdf, data_code_book){
   }
   
   
+  
   data_code_book = data_code_book[order(data_code_book$Name),]
   risk_dataset = data.frame(risk_vars, risk_weights, stringsAsFactors = FALSE)[order(risk_vars),]
   risk_dataset$var_code = data_code_book$Name[in_match_order(data_code_book$risk_factor_name, risk_dataset$risk_vars)]
   
+  #handles the edge case where only one variable is involved in the scoring.
+  if(length(risk_vars) < 2) {
+    score_var = as.numeric(spdf@data[,risk_dataset$var_code])
+    if(is.null(spdf$GEOID)) return(data.frame(score = min_max_vec(score_var, na.rm = TRUE), stringsAsFactors = FALSE))
+    return(data.frame(GEOID = spdf$GEOID, score = min_max_vec(score_var, na.rm = TRUE), stringsAsFactors = FALSE))
+  }
   #get the vars from the spdf that are valuable here and order them in the same was as the risk_dataset
   score_vars = tryCatch(spdf@data[,which(colnames(spdf@data) %in% risk_dataset$var_code)], 
                         error = function(e) spdf[,which(colnames(spdf) %in% risk_dataset$var_code)])
@@ -232,6 +249,8 @@ make_full_spdf = function(spdf, data_code_book, risk_vars, risk_weights, quantil
   
   return(spdf)
 }
+
+
 
 
 #given the spdf, returns the loc_dist_matrix
@@ -423,13 +442,16 @@ make_map = function(present_spdf, past_spdf, inputs, TRACT_PAL = 'RdYlGn', TRACT
 }
 
 
+######## Createing the initial map #########
+
+
 city_all_dat_hash = hash::hash() 
 for(year in inputs$year_range[1]:inputs$year_range[2]){
   acs_year = acs_hash[[as.character(year)]]
   acs_year = acs_year[acs_year$GEOID %in% city_tracts,]
   cdc_year = cdc_hash[[as.character(year)]]
   cdc_year = cdc_year[cdc_year$GEOID %in% city_tracts,]
-  city_all_dat_hash[[as.character(year)]] = merge(cdc_year, acs_year, by = 'GEOID')
+  city_all_dat_hash[[as.character(year)]] = merge(cdc_year[!duplicated(cdc_year$GEOID),], acs_year[!duplicated(acs_year$GEOID),], by = 'GEOID')
 }
 
 city_all_spdf_hash = hash::hash()
@@ -441,9 +463,6 @@ for(year in inputs$year_range[1]:inputs$year_range[2]){
   city_spdf@data = city_data
   city_all_spdf_hash[[as.character(year)]] = city_spdf
 }
-
-#in order - violence, health, economic, qol
-data_factors = inputs[c('violence_factors', 'health_factors', 'economics_factors', 'qol_factors')] %>% values() %>% unlist()
 
 #creating the scores
 risk_vars = data_factors
@@ -464,23 +483,103 @@ present_spdf@data$pred_label = pred_list$label
 
 initial_map = make_map(present_spdf, past_spdf, inputs, TRACT_PAL, TRACT_OPACITY, QUANTILE_BINS)
 
+########## UI ##############
+
 output$pageStub <- renderUI(tagList(
+  # tags$link(rel = "stylesheet", type = "text/css", href = "screen_size.css"),
+  includeCSS('www/sreen_size.css'),
+  withTags({
+    div(class = "no_small_screen", 
+        bsCollapse(id = "sliders", 
+                   bsCollapsePanel('Click here to edit weight of metrics',
+                                   fluidRow(
+                                     column(10, h4("Increase/decrease the amount each metric goes into the overall risk metric. To recalculate overall risk, click 'Submit'"),
+                                            h5("For example, sliding one metric up to 2 will make it twice as important in calculating the overall risk")),
+                                     column(2, actionBttn('recalculate_weights', 'Submit'))
+                                   ),
+                                   fluidRow(
+                                     column(4, uiOutput('sliders_1')),
+                                     column(4, uiOutput('sliders_2')),
+                                     column(4, uiOutput('sliders_3'))
+                                   ), style = "info"
+                   )
+        )
+    )
+    
+  }),
   fluidRow(
-    column(5,
-           HTML("<p>This is the home page of our excellent web site.</p>",
-                "<p>There's a second page that displays data about Old Faithful.",
-                "On that page you can move the slider to increase or decrease the",
-                "number of bins in the histogram.</p>",
-                "<p>The third link goes to a page that doesn't exist to demonstrate",
-                "error handling for bad URLs.</p>")
-    ),column(7,
-             leaflet::leafletOutput('map', height = 500)
-             )
+    # column(5,
+    #        HTML("<p>This is the home page of our excellent web site.</p>",
+    #             "<p>There's a second page that displays data about Old Faithful.",
+    #             "On that page you can move the slider to increase or decrease the",
+    #             "number of bins in the histogram.</p>",
+    #             "<p>The third link goes to a page that doesn't exist to demonstrate",
+    #             "error handling for bad URLs.</p>")
+    # ),column(7,
+    withTags({
+      div(class = "map_container",
+            leaflet::leafletOutput('map', height = '85vh')
+          )
+    })
   )
 )
 )
 
 output$map <- renderLeaflet(initial_map)
+
+output$sliders_1 <- renderUI({
+  lapply(data_factors[seq(1, length(data_factors), by = 3)], function(i){
+    sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
+  })
+})
+if(length(data_factors) > 1){
+  output$sliders_2 <- renderUI({
+    lapply(data_factors[seq(2, length(data_factors), by = 3)], function(i){
+      sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
+    })
+  })
+}else{output$sliders_2 = NULL}
+if(length(data_factors) > 2){
+  output$sliders_3 <- renderUI({
+    lapply(data_factors[seq(3, length(data_factors), by = 3)], function(i){
+      sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
+    })
+  })
+}else{output$sliders_3 = NULL}
+
+
+############# Updating map with updated metrics ##############
+
+observeEvent(input$recalculate_weights,{
+  
+  #getting the new weights
+  new_weights = rep(0, length(data_factors))
+  for(n in seq_along(data_factors)) new_weights[n] = input[[data_factors[n]]]
+  #creating the scores
+  risk_vars = data_factors
+  risk_weights = new_weights
+  print(risk_vars)
+  print(risk_weights)
+  spdf = city_all_spdf_hash[['2018']]
+  data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
+  quantile_bins = QUANTILE_BINS
+
+  past_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[1])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
+  present_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[2])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
+  pred_list = get_predicted_scores_and_labels(city_all_spdf_hash, inputs, risk_vars, data_code_book, QUANTILE_BINS)
+  present_spdf@data$pred_score = pred_list$raw_score
+  present_spdf@data$pred_quantile = pred_list$score_quantile
+  present_spdf@data$pred_label = pred_list$label
+
+  new_map = make_map(present_spdf, past_spdf, inputs, TRACT_PAL, TRACT_OPACITY, QUANTILE_BINS)
+  
+  output$map = renderLeaflet(new_map)
+  
+  updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
+  
+})
+
+
 
 
 

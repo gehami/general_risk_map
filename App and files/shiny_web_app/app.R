@@ -27,13 +27,16 @@ sample_dat = function(dat, rows = 10){
 ######### packages #########
 library(shiny)
 library(shinyWidgets)
-library(maps)
+# library(maps)
 library(tools)
-library(tidyverse)
-library(tidycensus)
+# library(tidyverse)
+# library(tidycensus)
 library(hash)
 library(leaflet)
-
+library(magrittr)
+library(shinyBS)
+library(sp)
+library(rgeos)
 
 # put a message in console or server log; note this happens only when the app is started!
 cat("uiStub application started...\n")
@@ -46,12 +49,12 @@ server <- function(input, output, session) {
   
   # build menu; same on all pages
   output$uiStub <- renderUI(tagList(             # a single-output stub ui basically lets you
+    tags$link(rel = "stylesheet", type = "text/css", href = "screen_size.css"),
     fluidPage(                                  #     move the ui into the server function
       fluidRow(
         column(12,
-               HTML("<h3><a href='?home'>Home</a> | ",
-                    "<a href='?map'>Map</a> |",
-                    "<a href='?page3'>Nothing</a>",
+               HTML("<h3><a href='?home'>Home</a>",
+                  #  " | <a href='?map'>Map</a>",
                     "</h3>")
         )
       ),
