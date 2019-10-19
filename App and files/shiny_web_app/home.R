@@ -491,7 +491,7 @@ output$pageStub <- renderUI(tagList(
     # ),
     column(12, 
            selectizeInput(
-             'city', 'Select your city (US only)', choices = c(cities_cdc), multiple = TRUE,
+             'city', HTML('Search for your city </br><small>(Largest 500 US cities only)</small>'), choices = c(cities_cdc), multiple = TRUE,
              options = list(
                placeholder = 'Enter City name',
                onInitialize = I(paste0('function() { this.setValue("',paste(location, collapse = ','),'"); }')),
