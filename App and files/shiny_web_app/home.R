@@ -42,9 +42,9 @@ QOL_CHOICES = c(
   'Born outside the US',
   'Moved to county in past year',
   'Public transit to work',
-  'Walk to work',
-  'Households without a computer',
-  'Households without broadband'
+  'Walk to work'#,
+  # 'Households without a computer',
+  # 'Households without broadband'
 )
 
 #Understanding the year range that should be available in the app
@@ -788,7 +788,7 @@ observeEvent(input$map_it,{
     saveRDS(risk_vars, file = 'inputs_outputs/risk_vars.rds')
     saveRDS(data_factors, file = 'inputs_outputs/data_factors.rds')
     saveRDS(initial_map, file = 'inputs_outputs/initial_map.rds')
-    
+    saveRDS(past_spdf[1,], file = 'inputs_outputs/example_past_spdf.rds')
     
     #### Moving to next page #######
     
