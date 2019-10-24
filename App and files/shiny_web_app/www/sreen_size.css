@@ -59,10 +59,10 @@
 }
 
 
-  #map_tile_popup{
-    left: 0;
-    top: 10%;
-  }
+#map_tile_popup{
+  left: 0;
+  top: 60%;
+}
 
 
 @media screen and (max-width: 700px){
@@ -176,3 +176,57 @@
   right: 0;
   margin: 10% auto;
 }
+
+
+
+
+/*
+Leaflet classes
+*/
+
+/*layer controls: leaflet-control-layers-selector, leaflet-control-layers-base, leaflet-control-layers-list, leaflet-control-layers-expanded
+Legend classes: info, legend, leaflet-control
+credits classes: leaflet-control-attribution, leaflet-control
+
+Corner classes: leaflet-top leaflet-right leaflet-left leaflet-bottom (combos of these make the corners)
+
+popup class: leaflet-popup-content-wrapper, leaflet-popup,  leaflet-zoom-animated
+
+drop-down menu: panel panel-info
+
+*/
+
+/*Testing borders*/
+
+
+/*Adding the border animation to any outline*/
+@keyframes animateBorder {
+  to {
+    outline-color: #EA3556;
+    box-shadow: 0 0 0 6px blue
+  }
+}
+
+
+.highlight-border{
+  outline: 6px dashed blue;
+  box-shadow: 0 0 0 6px #EA3556;
+  animation: 1s animateBorder infinite;
+}
+
+/*.leaflet-popup-content{
+  outline: 6px dashed blue;
+  box-shadow: 0 0 0 6px #EA3556;
+  animation: 1s animateBorder infinite;
+}*/
+
+
+
+
+
+
+
+
+
+
+

@@ -480,7 +480,7 @@ observeEvent(input$walkthrough,{
     div(class = "popup",
         HTML('<h5, class = "popup_text">Click-and-drag map to move around (or swipe on mobile).</h5></br>',
              '<h5, class = "popup_text">Scroll to zoom in and out (or pinch on mobile)</h5></br>'),
-        # actionLink('close_help', label = HTML('<p class="close">&times;</p>')),
+        actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         actionBttn("walkthrough_map_nav", HTML("<p>Next</p>"), style = 'unite', size = 'sm')
     )
   })
@@ -494,30 +494,40 @@ observeEvent(input$walkthrough_map_nav,{
              '<h5, class = "popup_text">Each metric is ranked relative to the other neighborhoods from lowest on that metric (0%ile) 
              to the highest 10% (90%ile). The overall metric at the top is a combination score of all the metrics you selected, and 
              reflects the color of the neighborhood\'s tile</h5></br>'),
-        # actionLink('close_help', label = HTML('<p class="close">&times;</p>')),
+        actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         actionBttn("walkthrough_map_tile", HTML("<p>Next</p>"), style = 'unite', size = 'sm')
     )
   })
   leafletProxy('map') %>% clearPopups() %>% addPopups(lat = as.numeric(example_past_spdf$INTPTLAT), lng = as.numeric(example_past_spdf$INTPTLON),
                                                       popup = HTML(example_past_spdf$label))
+
+  # shinyjs::addCssClass(class = 'highlight-border', selector = '.leaflet-popup-content')
+
+  
 })
 
 observeEvent(input$walkthrough_map_tile,{
   # shinyjs::hide(id = 'initial_popup')
+  # shinyjs::removeCssClass(class = 'highlight-border', selector = '.leaflet-popup-content')
+  
   output$tutorial <- renderUI({
     div(id = 'legend_popup', class = "popup",
         HTML('<h5, class = "popup_text">Below is the map\'s legend. Each neighborhood is colored based on its overall 
              score from the metrics you chose. High-issue neighborhoods will be shown in red (90%ile) while low-issue 
              neighborhoods will be shown in green (0%ile)</h5></br>'),
-        # actionLink('close_help', label = HTML('<p class="close">&times;</p>')),
+        actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         actionBttn("walkthrough_legend", HTML("<p>Next</p>"), style = 'unite', size = 'sm')
   )
   })
   leafletProxy('map') %>% clearPopups()
+  shinyjs::addCssClass(class = 'highlight-border', selector = '.legend')
+  
 })
 
 observeEvent(input$walkthrough_legend,{
   # shinyjs::hide(id = 'initial_popup')
+  shinyjs::removeCssClass(class = 'highlight-border', selector = '.legend')
+  
   leafletProxy('map') %>% removeLayersControl() %>% addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
                                                                                     as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
                                                                     options = layersControlOptions(collapsed = FALSE))
@@ -525,17 +535,21 @@ observeEvent(input$walkthrough_legend,{
     div(id = 'layer_and_metrics_popup', class = "popup",
         HTML('<h5, class = "popup_text"></h5>Change the year by clicking on the buttons to the right. 
              You can see the metrics for the past and present, as well as the predict overall metric for the future.</br>'),
-        # actionLink('close_help', label = HTML('<p class="close">&times;</p>')),
+        actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         div(class = 'no_big_screen',actionBttn("end_walkthrough", HTML("<p no_big_screen>Explore map</p>"), style = 'unite', size = 'sm')),
         div(class = 'no_small_screen',actionBttn("walkthrough_layers", HTML("<p no_small_screen>Next</p>"), style = 'unite', size = 'sm'))
         
     )
   })
+  shinyjs::addCssClass(class = 'highlight-border', selector = '.leaflet-top.leaflet-right')
+
 })
 
 
 observeEvent(input$walkthrough_layers,{
   # shinyjs::hide(id = 'initial_popup')
+  shinyjs::removeCssClass(class = 'highlight-border', selector = '.leaflet-top.leaflet-right')
+  
   leafletProxy('map') %>% removeLayersControl() %>% addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
                                                                                     as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
                                                                      options = layersControlOptions(collapsed = TRUE))
@@ -544,17 +558,17 @@ observeEvent(input$walkthrough_layers,{
         HTML('<h5, class = "popup_text"></h5>Currently, all of the metrics you chose to look at are weighted equally. 
              If you feel like some should be more important than others in determining your overall metric,
              you can adjust their weights above.</br>'),
-        # actionLink('close_help', label = HTML('<p class="close">&times;</p>')),
+        actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         div(actionBttn("end_walkthrough", HTML("<p>Explore map</p>"), style = 'unite', size = 'sm'))
     )
   })
+  
+  updateCollapse(session, "sliders", open = 'Click here to edit weight of metrics')
+  shinyjs::addCssClass(class = 'highlight-border', selector = '.panel.panel-info')
+  
 })
 
 observeEvent(input$close_help,{
-  leafletProxy('map') %>% removeLayersControl() %>% clearPopups() %>%
-    addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
-                                                                                    as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
-                                                                     options = layersControlOptions(collapsed = TRUE))
   output$tutorial <- renderUI({
     div(id = 'return_help_popup', class = 'help_popup', 
         actionLink('open_help', HTML('<p class = "re_open">&quest;</p>'))
@@ -565,12 +579,39 @@ observeEvent(input$close_help,{
   
 })
 
-observeEvent(input$end_walkthrough,{
+observeEvent(input$close_help_popups,{
+  print("This should close the help popup")
+  leafletProxy('map') %>% removeLayersControl() %>% clearPopups() %>%
+    addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
+                                    as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
+                     options = layersControlOptions(collapsed = TRUE))
   output$tutorial <- renderUI({
     div(id = 'return_help_popup', class = 'help_popup', 
         actionLink('open_help', HTML('<p class = "re_open">&quest;</p>'))
     )
   })
+  updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
+  shinyjs::removeCssClass(class = 'highlight-border', selector = '.panel.panel-info')
+  shinyjs::removeCssClass(class = 'highlight-border', selector = '.leaflet-top.leaflet-right')
+  shinyjs::removeCssClass(class = 'highlight-border', selector = '.legend')
+  
+  
+})
+
+
+
+
+observeEvent(input$end_walkthrough,{
+
+  shinyjs::removeCssClass(class = 'highlight-border', selector = '.panel.panel-info')
+  updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
+  
+  output$tutorial <- renderUI({
+    div(id = 'return_help_popup', class = 'help_popup', 
+        actionLink('open_help', HTML('<p class = "re_open">&quest;</p>'))
+    )
+  })
+  
 })
 
 observeEvent(input$no_walkthrough,{
@@ -590,7 +631,7 @@ observeEvent(input$open_help,{
     div(class = "popup",
         HTML('<h5, class = "popup_text">Click-and-drag map to move around (or swipe on mobile).</h5></br>',
              '<h5, class = "popup_text">Scroll to zoom in and out (or pinch on mobile)</h5></br>'),
-        # actionLink('close_help', label = HTML('<p class="close">&times;</p>')),
+        actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         actionBttn("walkthrough_map_nav", HTML("<p>Next</p>"), style = 'unite', size = 'sm')
     )
   })
