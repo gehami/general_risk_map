@@ -3,49 +3,64 @@
 
 # county_list = toTitleCase(gsub("([^,]+)(,)([[:print:]]+)", "\\3 county, \\1", county.fips$polyname))
 
+######## REading in codebook #########
 
+
+#reading in codebook to translate the names of the acs vars to their name in the dataset
+if(!exists('codebook')){
+  codebook = read.csv('variable_mapping.csv', stringsAsFactors = FALSE)
+}
+
+data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
 
 ####### Constants #########
 
-VIOLENCE_CHOICES = c(#need to do some research on what variables can be selected. 
-  'Rate of binge drinking', #measured by CDC binge drinking reports
-  'Mental health diagnoses',
-  'Low education (no high school diploma)',
-  'Young single parents (<25)',
-  'Children in poverty'
-  # 'Unemployment rate',
-  # 'Households under poverty line'
-)
-HEALTH_CHOICES = c(
-  'Lack health insurance (18-64)',
-  'Lack dental visits',
-  'Regularly sleep <7 hours',
-  'Mental health diagnoses',
-  'No physical activity',
-  'Obesity rate',
-  'High blood pressure',
-  'Diabetes',
-  'High cholesterol',
-  'Asthma',
-  'Arthritis',
-  'Heart Disease',
-  'Cancer'
-)
-ECONOMIC_CHOICES = c(
-  'Unemployment rate',
-  'Adults out of labor force',
-  'Households under poverty line',
-  'Renter households'
-)
-QOL_CHOICES = c(
-  'Speak little to no english',
-  'Born outside the US',
-  'Moved to county in past year',
-  'Public transit to work',
-  'Walk to work'#,
-  # 'Households without a computer',
-  # 'Households without broadband'
-)
+
+VIOLENCE_CHOICES = data_code_book$risk_factor_name[grep('violence', data_code_book$metric_category, ignore.case = TRUE)]
+HEALTH_CHOICES = data_code_book$risk_factor_name[grep('health', data_code_book$metric_category, ignore.case = TRUE)]
+ECONOMIC_CHOICES = data_code_book$risk_factor_name[grep('economic', data_code_book$metric_category, ignore.case = TRUE)]
+QOL_CHOICES = data_code_book$risk_factor_name[grep('qol', data_code_book$metric_category, ignore.case = TRUE)]
+
+
+# VIOLENCE_CHOICES = c(#need to do some research on what variables can be selected. 
+#   'Rate of binge drinking', #measured by CDC binge drinking reports
+#   'Mental health diagnoses',
+#   'Low education (no high school diploma)',
+#   'Young single parents (<25)',
+#   'Children in poverty'
+#   # 'Unemployment rate',
+#   # 'Households under poverty line'
+# )
+# HEALTH_CHOICES = c(
+#   'Lack health insurance (18-64)',
+#   'Lack dental visits',
+#   'Regularly sleep <7 hours',
+#   # 'Mental health diagnoses',
+#   'No physical activity',
+#   'Obesity rate',
+#   'High blood pressure',
+#   'Diabetes',
+#   'High cholesterol',
+#   'Asthma',
+#   'Arthritis',
+#   'Heart Disease',
+#   'Cancer'
+# )
+# ECONOMIC_CHOICES = c(
+#   'Unemployment rate',
+#   'Adults out of labor force',
+#   'Households under poverty line',
+#   'Renter households'
+# )
+# QOL_CHOICES = c(
+#   'Speak little to no English',
+#   'Born outside the US',
+#   'Moved to county in past year',
+#   'Public transit to work',
+#   'Walk to work'#,
+#   # 'Households without a computer',
+#   # 'Households without broadband'
+# )
 
 #Understanding the year range that should be available in the app
 #since cdc data only goes back to 2016, we are cutting the year range off at 2016 minimum
@@ -55,7 +70,7 @@ YEAR_RANGE = c(2016,2018)
 #loading one cdc data to know what cities we have cdc data on
 cdc_2018 = readRDS('data_tables/cdc_2018.rds')
 cities_cdc = paste0(cdc_2018$placename[!duplicated(cdc_2018$placename)], ' ', cdc_2018$stateabbr[!duplicated(cdc_2018$placename)])
-
+states_cdc = unique(cdc_2018$stateabbr)
 
 ######## custom JS ######
 redirect_jscode <- "Shiny.addCustomMessageHandler('mymessage', function(message) {window.location = '?map';});"
@@ -167,7 +182,7 @@ calculate_score = function(risk_vars, risk_weights, spdf, data_code_book){
   
 }
 #making the label for the map from the risk_vars, spdf, codebook, and quantile bins
-make_label_for_score = function(risk_vars, spdf, data_code_book, quantile_bins = 10){
+make_label_for_score = function(risk_vars, spdf, data_code_book, quantile_bins = 10, front_name = FALSE){
   label_list = NULL
   #cleaning up the risk_var names
   risk_var_cats = unique(gsub('([[:alpha:]]+)(_[[:print:]]*)', '\\1', names(risk_vars)))
@@ -197,33 +212,56 @@ make_label_for_score = function(risk_vars, spdf, data_code_book, quantile_bins =
     label_string = NULL
     if(length(risk_var_cats) < 2){
       for(n in seq_along(risk_vars)){
-        label_string = c(label_string, paste0(risk_vars[n], ': ', 
-                                              round(spdf@data[row_ind,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]]), '% (', 
-                                              get_quantile(spdf@data[,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]], quantile_bins = quantile_bins)[row_ind], '%ile)'))
+        
+        if(front_name){
+        label_string = c(label_string, paste0('<small class = "no_small_screen">',data_code_book$front_name[data_code_book$risk_factor_name == risk_vars[n]][1], ' :', 
+                                              round(spdf@data[row_ind,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]]), '% ', 
+                                              get_quantile(spdf@data[,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]], quantile_bins = quantile_bins)[row_ind], '%ile)</small>'))
+        }else{
+          label_string = c(label_string, paste0('<small class = "no_small_screen">', round(spdf@data[row_ind,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]]), '% ', 
+                                                data_code_book$back_name[data_code_book$risk_factor_name == risk_vars[n]][1], ' (',
+                                                get_quantile(spdf@data[,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]], quantile_bins = quantile_bins)[row_ind], '%ile)</small>'))
+        }
+        
+
       }
-      full_label = c(paste0("<b>Overall ", risk_var_cats_name_conversion$display_names[1], " metric: ", get_quantile(spdf@data$score[row_ind], quantile_bins = quantile_bins, compare_vec = spdf@data$score), "%ile</b>"), label_string)
-      label_list = c(label_list, paste(full_label, collapse = '</br>')) 
+      full_label = c(paste0("<b>Overall ", risk_var_cats_name_conversion$display_names[1], " metric: ", get_quantile(spdf@data$score[row_ind], quantile_bins = quantile_bins, compare_vec = spdf@data$score),
+                            "%ile</b>", '<br class = "no_big_screen">'), label_string)
+      label_list = c(label_list, paste(full_label, collapse = '<br class = "no_small_screen">')) 
       
     }else{
       for(risk_cat in risk_var_cats){
         # risk_cat = risk_var_cats[1]
         cat_score = risk_cats_quantiles[row_ind,risk_cat]
         label_string = c(label_string, paste0('<i>', risk_var_cats_name_conversion$display_names[risk_var_cats_name_conversion$cats == risk_cat],
-                                              ': ', as.character(cat_score), '%ile</i>'))
+                                              ': ', as.character(cat_score), '%ile</i><br class = "no_big_screen">'))
         
         interest_vars = risk_vars[grep(risk_cat, names(risk_vars))]
+        if(front_name){
+          display_var_names = data_code_book$front_name[in_match_order(data_code_book$risk_factor_name, interest_vars)]
+        }else{
+          display_var_names = data_code_book$back_name[in_match_order(data_code_book$risk_factor_name, interest_vars)]
+        }
         interest_var_names = data_code_book$Name[in_match_order(data_code_book$risk_factor_name, interest_vars)] #works
         for(sub_vars_ind in seq_len(length(interest_vars))){
-          label_string = c(label_string, 
-                           paste0('<small>', interest_vars[sub_vars_ind], ': ', 
-                                  round(spdf@data[row_ind,interest_var_names[sub_vars_ind]]), '% (', 
-                                  get_quantile(spdf@data[,interest_var_names[sub_vars_ind]], quantile_bins = quantile_bins)[row_ind], '%ile)', '</small>')
-          )
+          if(front_name){
+            label_string = c(label_string, 
+                             paste0('<small class = "no_small_screen">', display_var_names[sub_vars_ind], ': ', 
+                                    round(spdf@data[row_ind,interest_var_names[sub_vars_ind]]), '% (', 
+                                    get_quantile(spdf@data[,interest_var_names[sub_vars_ind]], quantile_bins = quantile_bins)[row_ind], '%ile)', '</small>')
+            )
+          }else{
+            label_string = c(label_string, 
+                             paste0('<small class = "no_small_screen">',  
+                                    round(spdf@data[row_ind,interest_var_names[sub_vars_ind]]), '% ', display_var_names[sub_vars_ind], ' (',
+                                    get_quantile(spdf@data[,interest_var_names[sub_vars_ind]], quantile_bins = quantile_bins)[row_ind], '%ile)', '</small>')
+            )
+          }
         }
       }
       full_label = c(paste0("<b>Overall risk metric: ", 
-                            get_quantile(spdf@data$score[row_ind], quantile_bins = quantile_bins, compare_vec = spdf@data$score), "%ile</b>"), label_string)
-      label_list = c(label_list, paste(full_label, collapse = '</br>'))
+                            get_quantile(spdf@data$score[row_ind], quantile_bins = quantile_bins, compare_vec = spdf@data$score), "%ile</b>", '<br class = "no_big_screen">'), label_string)
+      label_list = c(label_list, paste(full_label, collapse = '<br class = "no_small_screen">'))
     }
   }
   return(label_list)
@@ -461,7 +499,7 @@ output$pageStub <- renderUI(tagList(
   tags$head(tags$script(redirect_jscode)),
   tags$head(rel = "stylesheet", type = 'text/css', href = 'https://fonts.googleapis.com/css?family=Montserrat|Open+Sans|Raleway|Roboto|Roboto+Condensed&display=swap'),
   includeCSS('www/sreen_size.css'),
-  
+  useShinyjs(),
 ########### splash up front ###########
   fluidRow(
     div(class = 'center_wrapper',
@@ -470,8 +508,7 @@ output$pageStub <- renderUI(tagList(
       HTML('<h4 class = "splash_text smaller_header">The needs of a city are different in each neighborhood. Some communities struggle with poverty, others with health problems.',
            'Understanding the specific issues in each neighborhood can improve how a city allocates services.',
          'Study the numbers that reflect issues in your community'),
-      HTML('<h4 class = "splash_text smaller_header"><a href = "https://www.google.com">See how it works here</a></h4>',
-           '<h5 class = "splash_text smaller_header">Data from the CDC and US Census. All metrics are scored from low-issue (0%ile) to high-issue (90%ile).</h5>',
+      HTML('<h5 class = "splash_text smaller_header">Data from the CDC and US Census. All metrics are scored from low-issue (0%ile) to high-issue (90%ile).</h5>',
            '<h5 class = "splash_text smaller_header">by: Albert Gehami</h5>')
 
     )
@@ -482,22 +519,20 @@ output$pageStub <- renderUI(tagList(
 ###### Inputs and descriptions ##########  
   div(class = 'center_wrapper',
   fluidRow(class = 'splash_front',
-    # column(5,
-    #        HTML("<p>Welcome to the city risk factors map. To see how to use this tool, click on <a href = 'https://www.google.com'> this link to the tutorial</a></p>",
-    #             "<p>On this page you can select the risk factors you would like to explore.",
-    #             "Risk factors cover topics on community health, economics, potential for community violence, and quality of life.",
-    #             "All metrics are scored from low risk (0%) to high risk (100%), with a high-risk neighborhood displaying the most need for support based on our data.</p>"
-    #             )
-    # ),
-    column(12, 
-           selectizeInput(
-             'city', HTML('Search for your city </br><small>(Largest 500 US cities only)</small>'), choices = c(cities_cdc), multiple = TRUE,
-             options = list(
-               placeholder = 'Enter City name',
-               onInitialize = I(paste0('function() { this.setValue("',paste(location, collapse = ','),'"); }')),
-               maxOptions = 10
-             )
-           )
+    div(class = "on_same_row", 
+        selectizeInput('state', HTML('Filter by state or directly search for your city below'), choices = c(states_cdc[order(states_cdc)]), 
+                       options = list(
+                         onInitialize = I(paste0('function() { this.setValue(""); }'))
+                       )),
+        uiOutput('select_city')
+           # selectizeInput(
+           #   'city', HTML('Search for your city </br><small>(Largest 500 US cities only)</small>'), choices = c(cities_cdc), multiple = FALSE,
+           #   options = list(
+           #     placeholder = 'Enter City name',
+           #     onInitialize = I(paste0('function() { this.setValue("',paste(location, collapse = ','),'"); }')),
+           #     maxOptions = 10
+           #   )
+           # )
            )
   ),
   fluidRow(column(12,
@@ -548,7 +583,9 @@ output$pageStub <- renderUI(tagList(
                   )),
                   # sliderInput('year_range', 'Which years should we look at?',
                   #             YEAR_RANGE[1], YEAR_RANGE[2], value = year_range),
+                  
                   actionBttn('map_it', 'Map it'),
+                  # actionButton('map_it', 'Map it'),
                   uiOutput('input_warning'),
                   uiOutput('loading_sign')
 
@@ -564,6 +601,23 @@ output$pageStub <- renderUI(tagList(
 # observeEvent(input$year_range,{
 #   print(input$year_range)
 # })
+
+
+######### Allowing to filter by state ###########
+
+output$select_city <- renderUI({
+  selectizeInput(
+    'city', HTML('Search for your city </br><small>(Largest 500 US cities only)</small>'), choices = c(cities_cdc[grep(paste0(input$state, '$'), cities_cdc)]), multiple = FALSE,
+    options = list(
+      placeholder = 'Enter City name',
+      onInitialize = I(paste0('function() { this.setValue("',paste(location, collapse = ','),'"); }')),
+      maxOptions = 30
+    )
+  )
+})
+
+
+
 
 
 ######### Setting up the select all checkboxes and their server code ##########
@@ -640,7 +694,8 @@ observeEvent(input$map_it,{
     print("no factors present")
     output$input_warning <- renderUI(h5("Please select at least 1 risk factor from the 4 drop-down menus above", class = "warning_text"))
   }else{
-   
+    shinyjs::disable('map_it')
+    
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     
@@ -663,7 +718,7 @@ observeEvent(input$map_it,{
     ####### Reading in data ########
     
     #reading in the cdc data
-    progress$set(message = "Loading CDC data", value = .10)
+    progress$set(message = "Loading CDC data", value = .05)
     if(!exists("cdc_hash")){cdc_hash = hash()}
     years = seq(inputs$year_range[1], inputs$year_range[2])
     for(year in years){
@@ -679,22 +734,22 @@ observeEvent(input$map_it,{
     
     #reading in the acs data. Note that the year of the data is actually the year before the key 
     #(i.e. acs_hash[['2018']] actually stores 2017 acs data), becuase the acs data is one year behind the cdc data. 
-    progress$set(message = "Loading Census data", value = .20)
+    progress$set(message = "Loading Census data", value = .1)
     if(!exists("acs_hash")){acs_hash = readRDS('data_tables/acs_dat_hash.rds')}
 
     #reading in the spatial data
-    progress$set(message = "Loading maps", value = .30)
+    progress$set(message = "Loading maps", value = .15)
     if(!exists('trimmed_tracts')){trimmed_tracts = readRDS('data_tables/trimmed_tract_data.rds')}
     
     #reading in the tract_city_database
     if(!exists('tract_city_dictionary')){tract_city_dictionary = readRDS('data_tables/tract_city_dictionary.rds')}
     
-    progress$set(message = "Loading maps", value = .40)
+    progress$set(message = "Loading maps", value = .20)
     
     #reading in codebook to translate the names of the acs vars to their name in the dataset
-    if(!exists('codebook')){
-      codebook = read.csv('variable_mapping.csv', stringsAsFactors = FALSE)
-    }
+    # if(!exists('codebook')){
+    #   codebook = read.csv('variable_mapping.csv', stringsAsFactors = FALSE)
+    # }
     
     print("codebook")
     
@@ -716,7 +771,7 @@ observeEvent(input$map_it,{
     # 1/x_ij where x is number of blocks between block i and j (starting at 1), 0 if more than MAX_BLOCK_DIST away
     MAX_LOC_DIST = 1 #looking at neighbords directly next to tract
     
-    TRACT_PAL = 'RdYlGn'
+    TRACT_PAL = 'RdYlBu'
     TRACT_OPACITY = .7
     SLIDER_MIN = 0
     SLIDER_MAX = 10
@@ -734,7 +789,7 @@ observeEvent(input$map_it,{
     
     ######## Creating the initial map #########
     
-    progress$set(message = "Cleaning data", value = .50)
+    progress$set(message = "Cleaning data", value = .30)
     
     print('cleaning data')
     
@@ -757,24 +812,30 @@ observeEvent(input$map_it,{
       city_all_spdf_hash[[as.character(year)]] = city_spdf
     }
     
-    progress$set(message = "Developing metric scores", value = .60)
+    progress$set(message = "Developing metric scores", value = .35)
     
     #creating the scores
     risk_vars = data_factors
     risk_weights = rep(INITIAL_WEIGHTS, length(risk_vars))
-    spdf = city_all_spdf_hash[['2018']]
-    data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
+    # spdf = city_all_spdf_hash[['2018']]
+    # data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
     quantile_bins = QUANTILE_BINS
     
-    progress$set(message = "Designing map", value = .70)
-    
+    progress$set(message = paste0("Designing map of ", inputs$year_range[1]), value = .40)
     past_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[1])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
+    
+    progress$set(message = paste0("Designing map of ", inputs$year_range[2]), value = .50)
     present_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[2])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
+    
+    progress$set(message = paste0("Predicting map of ", inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1])), value = .60)
     pred_list = get_predicted_scores_and_labels(city_all_spdf_hash, inputs, risk_vars, risk_weights, data_code_book, QUANTILE_BINS, MAX_LOC_DIST)
     present_spdf@data$pred_score = pred_list$raw_score
     present_spdf@data$pred_quantile = pred_list$score_quantile
     present_spdf@data$pred_label = pred_list$label
     
+    
+    
+    progress$set(message = "Rendering maps", value = .70)
     initial_map = make_map(present_spdf, past_spdf, inputs, TRACT_PAL, TRACT_OPACITY, QUANTILE_BINS)
     
     
@@ -793,6 +854,8 @@ observeEvent(input$map_it,{
     #### Moving to next page #######
     
     progress$set(message = "Moving to results page", value = .90)
+    
+    shinyjs::enable('map_it')
     
     session$sendCustomMessage("mymessage", "mymessage")
     

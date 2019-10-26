@@ -7,7 +7,8 @@ library(purrr)
 
 ######## Constants #########
 
-ACS_YEAR = 2017
+START_ACS_YEAR = 2013
+END_ACS_YEAR = 2017
 CONTAIN_THRESHOLD = 0.5
 
 ###### pulling the vars that are needed ##########
@@ -32,28 +33,38 @@ census_api_key(key = census_key)
 
 #shout out to Kyle walker for this code snippet on grabbing every state's census tracts
 #https://walkerke.github.io/2017/05/tidycensus-every-tract/
-us <- unique(fips_codes$state)[1:2]
+us <- unique(fips_codes$state)[1:51]
 
-all_acs_dat <- map_df(us, function(x) {
-  get_acs(geography = "tract", variables = acs_codes[1], year = ACS_YEAR, survey = 'acs5',
-          state = x, cache_table = TRUE)
-})
-all_acs_dat$moe = NULL
-colnames(all_acs_dat)[colnames(all_acs_dat) == 'estimate'] = all_acs_dat$variable[1]
-all_acs_dat$variable = NULL
-for(n in 2:length(acs_codes)){
-  new_var <- map_df(us, function(x) {
-    get_acs(geography = "tract", variables = acs_codes[n], year = ACS_YEAR, survey = 'acs5',
+for(ACS_YEAR in START_ACS_YEAR:END_ACS_YEAR){
+  
+
+  all_acs_dat <- map_df(us, function(x) {
+    get_acs(geography = "tract", variables = acs_codes[1], year = ACS_YEAR, survey = 'acs5',
             state = x, cache_table = TRUE)
   })
-  all_acs_dat = cbind(all_acs_dat, estimate = new_var$estimate)
-  colnames(all_acs_dat)[colnames(all_acs_dat) == 'estimate'] = new_var$variable[1]
+
+  all_acs_dat$moe = NULL
+  colnames(all_acs_dat)[colnames(all_acs_dat) == 'estimate'] = all_acs_dat$variable[1]
+  all_acs_dat$variable = NULL
+  for(n in 2:length(acs_codes)){
+    new_var <- map_df(us, function(x) {
+      get_acs(geography = "tract", variables = acs_codes[n], year = ACS_YEAR, survey = 'acs5',
+              state = x, cache_table = TRUE)
+    })
+    all_acs_dat = cbind(all_acs_dat, estimate = new_var$estimate)
+    colnames(all_acs_dat)[colnames(all_acs_dat) == 'estimate'] = new_var$variable[1]
+    
+  }
+  
+  ##### saving the data #########
+  
+  print(paste0('Saving ', ACS_YEAR))
+  
+  saveRDS(all_acs_dat, paste0('data_tables/all_acs_dat_',ACS_YEAR, '.rds'))
+  
   
 }
 
-##### saving the data #########
-
-saveRDS(all_acs_dat, paste0('data_tables/all_acs_dat_',ACS_YEAR, '.rds'))
 
 
 
@@ -205,6 +216,9 @@ years = seq(2014, 2018)
 vars_needed = read.csv('variable_mapping.csv', stringsAsFactors = FALSE, header = TRUE)
 acs_codebook = vars_needed[vars_needed$Dataset == 'ACS',]
 
+tract_city_dictionary = readRDS('data_tables/tract_city_dictionary.rds')
+
+
 
 for(year in years){
   if(!(year %in% keys(acs_hash))){
@@ -262,6 +276,8 @@ saveRDS(acs_hash, file = 'data_tables/acs_dat_hash.rds')
 
 
 ########## saving all do the cities that I need as their own spatial files of tracts ##########
+
+require(tigris)
 all_us_tracts = tracts(state = state.abb[1])
 for(state_abb in c(state.abb[-1], 'DC')){
   all_us_tracts = rbind(all_us_tracts, tracts(state = state_abb))

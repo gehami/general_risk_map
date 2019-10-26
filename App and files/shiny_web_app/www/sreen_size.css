@@ -2,6 +2,17 @@
 @import url('https://fonts.googleapis.com/css?family=Montserrat|Open+Sans|Raleway|Roboto|Roboto+Condensed&display=swap');
 
 
+/*Action button classes*/
+/*btn btn-default action-button shiny-bound-input*/
+
+/*actionBttn classes: bttn bttn-unite*/
+.bttn:active{
+  color: rgb(29, 137, 255);
+}
+
+
+
+
 @media only screen and (max-width: 769px){
   .no_small_screen{
       display: none;
@@ -174,7 +185,7 @@
   top: 80vh;
   left: 0;
   right: 0;
-  margin: 10% auto;
+
 }
 
 

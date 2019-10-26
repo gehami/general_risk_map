@@ -19,7 +19,6 @@ initial_map = readRDS(file = 'inputs_outputs/initial_map.rds')
 example_past_spdf = readRDS(file = 'inputs_outputs/example_past_spdf.rds')
 
 
-
 ########## UI ##############
 
 output$pageStub <- renderUI(tagList(
@@ -29,11 +28,13 @@ output$pageStub <- renderUI(tagList(
   withTags({
     div(class = "no_small_screen", 
         bsCollapse(id = "sliders", 
-                   bsCollapsePanel('Click here to edit weight of metrics',
+                   bsCollapsePanel(HTML('<div stlye = "width:100%;">Click here to edit weight of metrics</div>'),
                                    fluidRow(
                                      column(10, h4("Increase/decrease the amount each metric goes into the overall risk metric. To recalculate overall risk, click 'Submit'"),
-                                            h5("For example, sliding one metric up to 2 will make it twice as important in calculating the overall risk")),
-                                     column(2, actionBttn('recalculate_weights', 'Submit'))
+                                            h5("For example, boosting one metric to 2 will make it twice as important in calculating the overall risk")),
+                                     column(2, actionBttn('recalculate_weights', 'Submit'),
+                                            actionBttn('reset_weight', 'Reset weights'))
+                                     # column(2, actionButton('recalculate_weights', 'Submit'))
                                    ),
                                    fluidRow(
                                      column(4, uiOutput('sliders_1')),
@@ -62,6 +63,8 @@ output$pageStub <- renderUI(tagList(
                 actionLink('close_help', label = HTML('<p class="close">&times;</p>')),
                 actionBttn("walkthrough", HTML("<p>Yes</p>"), style = 'unite', size = 'sm'),
                 actionBttn("no_walkthrough", HTML("<p>No</p>"), style = 'unite', size = 'sm')
+                # actionButton("walkthrough", HTML("<p>Yes</p>")),
+                # actionButton("no_walkthrough", HTML("<p>No</p>"))
               ),
             uiOutput('tutorial')
 
@@ -81,7 +84,7 @@ QUANTILE_BINS = 10
 # 1/x_ij where x is number of blocks between block i and j (starting at 1), 0 if more than MAX_BLOCK_DIST away
 MAX_LOC_DIST = 1 #looking at neighbords directly next to tract
 
-TRACT_PAL = 'RdYlGn'
+TRACT_PAL = 'RdYlBu'
 TRACT_OPACITY = .7
 SLIDER_MIN = 0
 SLIDER_MAX = 10
@@ -203,7 +206,7 @@ calculate_score = function(risk_vars, risk_weights, spdf, data_code_book){
   
 }
 #making the label for the map from the risk_vars, spdf, codebook, and quantile bins
-make_label_for_score = function(risk_vars, spdf, data_code_book, quantile_bins = 10){
+make_label_for_score = function(risk_vars, spdf, data_code_book, quantile_bins = 10, front_name = FALSE){
   label_list = NULL
   #cleaning up the risk_var names
   risk_var_cats = unique(gsub('([[:alpha:]]+)(_[[:print:]]*)', '\\1', names(risk_vars)))
@@ -233,33 +236,56 @@ make_label_for_score = function(risk_vars, spdf, data_code_book, quantile_bins =
     label_string = NULL
     if(length(risk_var_cats) < 2){
       for(n in seq_along(risk_vars)){
-        label_string = c(label_string, paste0(risk_vars[n], ': ', 
-                                              round(spdf@data[row_ind,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]]), '% (', 
-                                              get_quantile(spdf@data[,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]], quantile_bins = quantile_bins)[row_ind], '%ile)'))
+        
+        if(front_name){
+          label_string = c(label_string, paste0('<small class = "no_small_screen">',data_code_book$front_name[data_code_book$risk_factor_name == risk_vars[n]][1], ' :', 
+                                                round(spdf@data[row_ind,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]]), '% ', 
+                                                get_quantile(spdf@data[,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]], quantile_bins = quantile_bins)[row_ind], '%ile)</small>'))
+        }else{
+          label_string = c(label_string, paste0('<small class = "no_small_screen">', round(spdf@data[row_ind,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]]), '% ', 
+                                                data_code_book$back_name[data_code_book$risk_factor_name == risk_vars[n]][1], ' (',
+                                                get_quantile(spdf@data[,data_code_book$Name[data_code_book$risk_factor_name == risk_vars[n]]], quantile_bins = quantile_bins)[row_ind], '%ile)</small>'))
+        }
+        
+        
       }
-      full_label = c(paste0("<b>Overall ", risk_var_cats_name_conversion$display_names[1], " metric: ", get_quantile(spdf@data$score[row_ind], quantile_bins = quantile_bins, compare_vec = spdf@data$score), "%ile</b>"), label_string)
-      label_list = c(label_list, paste(full_label, collapse = '</br>')) 
+      full_label = c(paste0("<b>Overall ", risk_var_cats_name_conversion$display_names[1], " metric: ", get_quantile(spdf@data$score[row_ind], quantile_bins = quantile_bins, compare_vec = spdf@data$score),
+                            "%ile</b>", '<br class = "no_big_screen">'), label_string)
+      label_list = c(label_list, paste(full_label, collapse = '<br class = "no_small_screen">')) 
       
     }else{
       for(risk_cat in risk_var_cats){
         # risk_cat = risk_var_cats[1]
         cat_score = risk_cats_quantiles[row_ind,risk_cat]
         label_string = c(label_string, paste0('<i>', risk_var_cats_name_conversion$display_names[risk_var_cats_name_conversion$cats == risk_cat],
-                                              ': ', as.character(cat_score), '%ile</i>'))
+                                              ': ', as.character(cat_score), '%ile</i><br class = "no_big_screen">'))
         
         interest_vars = risk_vars[grep(risk_cat, names(risk_vars))]
+        if(front_name){
+          display_var_names = data_code_book$front_name[in_match_order(data_code_book$risk_factor_name, interest_vars)]
+        }else{
+          display_var_names = data_code_book$back_name[in_match_order(data_code_book$risk_factor_name, interest_vars)]
+        }
         interest_var_names = data_code_book$Name[in_match_order(data_code_book$risk_factor_name, interest_vars)] #works
         for(sub_vars_ind in seq_len(length(interest_vars))){
-          label_string = c(label_string, 
-                           paste0('<small>', interest_vars[sub_vars_ind], ': ', 
-                                  round(spdf@data[row_ind,interest_var_names[sub_vars_ind]]), '% (', 
-                                  get_quantile(spdf@data[,interest_var_names[sub_vars_ind]], quantile_bins = quantile_bins)[row_ind], '%ile)', '</small>')
-          )
+          if(front_name){
+            label_string = c(label_string, 
+                             paste0('<small class = "no_small_screen">', display_var_names[sub_vars_ind], ': ', 
+                                    round(spdf@data[row_ind,interest_var_names[sub_vars_ind]]), '% (', 
+                                    get_quantile(spdf@data[,interest_var_names[sub_vars_ind]], quantile_bins = quantile_bins)[row_ind], '%ile)', '</small>')
+            )
+          }else{
+            label_string = c(label_string, 
+                             paste0('<small class = "no_small_screen">',  
+                                    round(spdf@data[row_ind,interest_var_names[sub_vars_ind]]), '% ', display_var_names[sub_vars_ind], ' (',
+                                    get_quantile(spdf@data[,interest_var_names[sub_vars_ind]], quantile_bins = quantile_bins)[row_ind], '%ile)', '</small>')
+            )
+          }
         }
       }
       full_label = c(paste0("<b>Overall risk metric: ", 
-                            get_quantile(spdf@data$score[row_ind], quantile_bins = quantile_bins, compare_vec = spdf@data$score), "%ile</b>"), label_string)
-      label_list = c(label_list, paste(full_label, collapse = '</br>'))
+                            get_quantile(spdf@data$score[row_ind], quantile_bins = quantile_bins, compare_vec = spdf@data$score), "%ile</b>", '<br class = "no_big_screen">'), label_string)
+      label_list = c(label_list, paste(full_label, collapse = '<br class = "no_small_screen">'))
     }
   }
   return(label_list)
@@ -466,8 +492,6 @@ make_map = function(present_spdf, past_spdf, inputs, TRACT_PAL = 'RdYlGn', TRACT
     showGroup(as.character(inputs$year_range[2])) %>% hideGroup('Clear')
   return(map_all)
 }
-
-
 #########  Server back-end #########
 ####### Outputing initial map ########
 output$map <- renderLeaflet(initial_map)
@@ -482,6 +506,7 @@ observeEvent(input$walkthrough,{
              '<h5, class = "popup_text">Scroll to zoom in and out (or pinch on mobile)</h5></br>'),
         actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         actionBttn("walkthrough_map_nav", HTML("<p>Next</p>"), style = 'unite', size = 'sm')
+        # actionButton("walkthrough_map_nav", HTML("<p>Next</p>"))
     )
   })
 })
@@ -491,11 +516,13 @@ observeEvent(input$walkthrough_map_nav,{
   output$tutorial <- renderUI({
     div(id = 'map_tile_popup', class = "popup",
         HTML('<h5, class = "popup_text">Click on a tile (the colored blocks on the map) to see a breakdown of its metrics</h5></br>',
-             '<h5, class = "popup_text">Each metric is ranked relative to the other neighborhoods from lowest on that metric (0%ile) 
-             to the highest 10% (90%ile). The overall metric at the top is a combination score of all the metrics you selected, and 
+             '<h5, class = "popup_text">Each metric is ranked relative to the other neighborhoods from the lowest decile of that metric (0%ile) 
+             to the highest decile (90%ile). The overall metric at the top is a combination score of all the metrics you selected, and 
              reflects the color of the neighborhood\'s tile</h5></br>'),
         actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         actionBttn("walkthrough_map_tile", HTML("<p>Next</p>"), style = 'unite', size = 'sm')
+        # actionButton("walkthrough_map_tile", HTML("<p>Next</p>"))
+        
     )
   })
   leafletProxy('map') %>% clearPopups() %>% addPopups(lat = as.numeric(example_past_spdf$INTPTLAT), lng = as.numeric(example_past_spdf$INTPTLON),
@@ -514,9 +541,11 @@ observeEvent(input$walkthrough_map_tile,{
     div(id = 'legend_popup', class = "popup",
         HTML('<h5, class = "popup_text">Below is the map\'s legend. Each neighborhood is colored based on its overall 
              score from the metrics you chose. High-issue neighborhoods will be shown in red (90%ile) while low-issue 
-             neighborhoods will be shown in green (0%ile)</h5></br>'),
+             neighborhoods will be shown in blue (0%ile)</h5></br>'),
         actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         actionBttn("walkthrough_legend", HTML("<p>Next</p>"), style = 'unite', size = 'sm')
+        # actionButton("walkthrough_legend", HTML("<p>Next</p>"))
+        
   )
   })
   leafletProxy('map') %>% clearPopups()
@@ -538,6 +567,8 @@ observeEvent(input$walkthrough_legend,{
         actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         div(class = 'no_big_screen',actionBttn("end_walkthrough", HTML("<p no_big_screen>Explore map</p>"), style = 'unite', size = 'sm')),
         div(class = 'no_small_screen',actionBttn("walkthrough_layers", HTML("<p no_small_screen>Next</p>"), style = 'unite', size = 'sm'))
+        # div(class = 'no_big_screen', actionButton("end_walkthrough", HTML("<p no_big_screen>Explore map</p>"))),
+        # div(class = 'no_small_screen', actionButton("walkthrough_layers", HTML("<p no_small_screen>Next</p>")))
         
     )
   })
@@ -560,6 +591,8 @@ observeEvent(input$walkthrough_layers,{
              you can adjust their weights above.</br>'),
         actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         div(actionBttn("end_walkthrough", HTML("<p>Explore map</p>"), style = 'unite', size = 'sm'))
+        # div(actionButton("end_walkthrough", HTML("<p>Explore map</p>")))
+        
     )
   })
   
@@ -606,6 +639,12 @@ observeEvent(input$end_walkthrough,{
   shinyjs::removeCssClass(class = 'highlight-border', selector = '.panel.panel-info')
   updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
   
+  shinyjs::removeCssClass(class = 'highlight-border', selector = '.leaflet-top.leaflet-right')
+  leafletProxy('map') %>% removeLayersControl() %>% addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
+                                                                                    as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
+                                                                     options = layersControlOptions(collapsed = TRUE))
+  
+  
   output$tutorial <- renderUI({
     div(id = 'return_help_popup', class = 'help_popup', 
         actionLink('open_help', HTML('<p class = "re_open">&quest;</p>'))
@@ -633,6 +672,8 @@ observeEvent(input$open_help,{
              '<h5, class = "popup_text">Scroll to zoom in and out (or pinch on mobile)</h5></br>'),
         actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
         actionBttn("walkthrough_map_nav", HTML("<p>Next</p>"), style = 'unite', size = 'sm')
+        # actionButton("walkthrough_map_nav", HTML("<p>Next</p>"))
+        
     )
   })
 })
@@ -640,32 +681,40 @@ observeEvent(input$open_help,{
 
 
 
-######### Sliders ##########
+######### Sliders/numeric inputs ##########
 
 output$sliders_1 <- renderUI({
   lapply(data_factors[seq(1, length(data_factors), by = 3)], function(i){
-    sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
+    numericInput(inputId = i, label = i, value = INITIAL_SLIDER_VALUE)
+    # sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
   })
 })
 if(length(data_factors) > 1){
   output$sliders_2 <- renderUI({
     lapply(data_factors[seq(2, length(data_factors), by = 3)], function(i){
-      sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
+      numericInput(inputId = i, label = i, value = INITIAL_SLIDER_VALUE)
+      # sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
     })
   })
 }else{output$sliders_2 = NULL}
 if(length(data_factors) > 2){
   output$sliders_3 <- renderUI({
     lapply(data_factors[seq(3, length(data_factors), by = 3)], function(i){
-      sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
+      numericInput(inputId = i, label = i, value = INITIAL_SLIDER_VALUE)
+      # sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
     })
   })
 }else{output$sliders_3 = NULL}
 
 
-############# Updating map with updated metrics ##############
+
+
+
+############# Updating map with updated metrics and reseting weights ##############
 
 observeEvent(input$recalculate_weights,{
+  
+  shinyjs::disable("recalculate_weights")
   
   progress <- shiny::Progress$new()
   on.exit(progress$close())
@@ -688,26 +737,62 @@ observeEvent(input$recalculate_weights,{
   
   past_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[1])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
 
-  progress$set(message = "Redefining 2018 metrics", value = .30)
+  progress$set(message = "Redefining 2018 metrics", value = .20)
   
   present_spdf = make_full_spdf(city_all_spdf_hash[[as.character(inputs$year_range[2])]], data_code_book, risk_vars, risk_weights, QUANTILE_BINS)
 
-  progress$set(message = "Building predictive model", value = .50)
+  progress$set(message = "Building predictive model", value = .30)
   
   pred_list = get_predicted_scores_and_labels(city_all_spdf_hash, inputs, risk_vars, risk_weights, data_code_book, QUANTILE_BINS, MAX_LOC_DIST)
   present_spdf@data$pred_score = pred_list$raw_score
   present_spdf@data$pred_quantile = pred_list$score_quantile
   present_spdf@data$pred_label = pred_list$label
 
-  progress$set(message = "Updating map", value = .90)
+  progress$set(message = "Updating map", value = .60)
   
   new_map = make_map(present_spdf, past_spdf, inputs, TRACT_PAL, TRACT_OPACITY, QUANTILE_BINS)
   
+  progress$set(message = "Rendering map", value = .90)
   
   output$map = renderLeaflet(new_map)
   
   updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
   # progress$close()
+  
+  shinyjs::enable("recalculate_weights")
+  
+  
+})
+
+observeEvent(input$reset_weight,{
+  shinyjs::disable("reset_weight")
+  
+  
+  output$sliders_1 <- renderUI({
+    lapply(data_factors[seq(1, length(data_factors), by = 3)], function(i){
+      numericInput(inputId = i, label = i, value = INITIAL_SLIDER_VALUE)
+      # sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
+    })
+  })
+  if(length(data_factors) > 1){
+    output$sliders_2 <- renderUI({
+      lapply(data_factors[seq(2, length(data_factors), by = 3)], function(i){
+        numericInput(inputId = i, label = i, value = INITIAL_SLIDER_VALUE)
+        # sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
+      })
+    })
+  }else{output$sliders_2 = NULL}
+  if(length(data_factors) > 2){
+    output$sliders_3 <- renderUI({
+      lapply(data_factors[seq(3, length(data_factors), by = 3)], function(i){
+        numericInput(inputId = i, label = i, value = INITIAL_SLIDER_VALUE)
+        # sliderInput(inputId = i, label = i, min = SLIDER_MIN, max = SLIDER_MAX, value = INITIAL_SLIDER_VALUE, step = MIN_SLIDER_STEP)
+      })
+    })
+  }else{output$sliders_3 = NULL}
+  
+  shinyjs::enable("reset_weight")
+  
   
 })
 
