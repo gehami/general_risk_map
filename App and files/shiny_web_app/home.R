@@ -463,8 +463,8 @@ make_map = function(present_spdf, past_spdf, inputs, TRACT_PAL = 'RdYlGn', TRACT
                 group = as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1])), options = pathOptions(pane = "risk_tiles")) %>% 
     addLegend(colors = tract_pal(legend_val[length(legend_val):1]), opacity = 0.7, position = 'bottomright',
               title = 'Risk factors level', labels = c('High (90%ile)', 'Low (10%ile)')) %>%
-    addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
-                                    as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1])))) %>%
+    # addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]),
+    #                                 as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1])))) %>%
     showGroup(as.character(inputs$year_range[2])) %>% hideGroup('Clear')
   return(map_all)
 }
@@ -509,7 +509,8 @@ output$pageStub <- renderUI(tagList(
            'Understanding the specific issues in each neighborhood can improve how a city allocates services.',
          'Study the numbers that reflect issues in your community'),
       HTML('<h5 class = "splash_text smaller_header">Data from the CDC and US Census. All metrics are scored from low-issue (0%ile) to high-issue (90%ile).</h5>',
-           '<h5 class = "splash_text smaller_header">by: Albert Gehami</h5>')
+           '<h5 class = "splash_text smaller_header">For comments, questions, and custom-mapping requests, contact Albert Gehami at 
+           <a href = "mailto: gehami@alumni.stanford.edu">gehami@alumni.stanford.edu</a></h5>')
 
     )
   )
@@ -693,6 +694,8 @@ observeEvent(input$map_it,{
   if(is.null(c(input$violence_factors, input$health_factors, input$economic_factors, input$qol_factors))){
     print("no factors present")
     output$input_warning <- renderUI(h5("Please select at least 1 risk factor from the 4 drop-down menus above", class = "warning_text"))
+  }else if(is.null(input$city) | input$city == ''){
+    output$input_warning <- renderUI(h5("Please select a city", class = "warning_text"))
   }else{
     shinyjs::disable('map_it')
     

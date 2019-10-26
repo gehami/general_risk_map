@@ -6,9 +6,21 @@
 /*btn btn-default action-button shiny-bound-input*/
 
 /*actionBttn classes: bttn bttn-unite*/
-.bttn:active{
-  color: rgb(29, 137, 255);
+.bttn p{
+  margin-bottom: 0;
 }
+
+
+
+#home_button {
+  background: #fff;
+  border-radius: 5px;
+  position: absolute;
+  z-index: 900;
+  margin-top: 1vh;
+  margin-left: 1vh;
+}
+
 
 
 
@@ -17,21 +29,27 @@
   .no_small_screen{
       display: none;
   }
+  #map_container {
+    height: 100vh;
+  }
+  
 }
 @media only screen and (min-width: 770px){
   .no_big_screen{
       display: none;
   }
+  #map_container {
+    height: 85vh;
+  }
 }
 
 
-.map_container{
+#map_container{
   width: 100%;
   position: relative;
   text-align: center;
   display: flex;
 }
-
 
 
 .popup {
@@ -90,6 +108,12 @@
     left: 0;
     top: 5%;
   }
+  
+  #home_popup{
+    right: 0;
+    left: auto;
+    top: 5%;
+  }
 }
 
 @media screen and (min-width: 700px){
@@ -103,27 +127,29 @@
     left: 30%;
     top: 5%;
   }
+  
+  #home_popup{
+    left: 30%;
+    top: 5%;
+  }
 }
 
 
-/*#return_help_popup {
-  left: 30%;
-  top: 40%;
-  padding: 30px;
-  background: #fff;
-  border-radius: 5px;
-  width: 40%;
+#select_year_div {
   position: absolute;
-  z-index: 1000;
-}*/
+  right: 1vw;
+  max-width: 17vw;
+  top: 1vh;
+}
 
 
 #return_help_popup {
-  left: 1%;
+  left: 1vh;
   /*margin-top: 20%;*/
   top: 85%;
+  height: auto;
   width: auto;
-  padding: 10px;
+  padding: 6px 10px 0 10px;
   background: #fff;
   border-radius: 5px;
   position: absolute;
@@ -133,7 +159,7 @@
 .help_popup .re_open {
   position: static;
   transition: all 200ms;
-  font-size: 30px;
+  font-size: 5vmin;
   font-weight: bold;
   text-decoration: none;
   color: #333;

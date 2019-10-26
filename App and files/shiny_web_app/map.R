@@ -24,11 +24,12 @@ example_past_spdf = readRDS(file = 'inputs_outputs/example_past_spdf.rds')
 output$pageStub <- renderUI(tagList(
   # tags$link(rel = "stylesheet", type = "text/css", href = "screen_size.css"),
   includeCSS('www/sreen_size.css'),
+  # tags$script(HTML('src="https://kit.fontawesome.com/b42d2a0614.js" crossorigin="anonymous">')), 
   useShinyjs(),
   withTags({
     div(class = "no_small_screen", 
         bsCollapse(id = "sliders", 
-                   bsCollapsePanel(HTML('<div stlye = "width:100%;">Click here to edit weight of metrics</div>'),
+                   bsCollapsePanel(HTML('<div stlye = "width:100%;">Click here to edit weight of metrics</div>'), value = 'Click here to edit weight of metrics',
                                    fluidRow(
                                      column(10, h4("Increase/decrease the amount each metric goes into the overall risk metric. To recalculate overall risk, click 'Submit'"),
                                             h5("For example, boosting one metric to 2 will make it twice as important in calculating the overall risk")),
@@ -47,17 +48,8 @@ output$pageStub <- renderUI(tagList(
     
   }),
   fluidRow(
-    # column(5,
-    #        HTML("<p>This is the home page of our excellent web site.</p>",
-    #             "<p>There's a second page that displays data about Old Faithful.",
-    #             "On that page you can move the slider to increase or decrease the",
-    #             "number of bins in the histogram.</p>",
-    #             "<p>The third link goes to a page that doesn't exist to demonstrate",
-    #             "error handling for bad URLs.</p>")
-    # ),column(7,
-    # withTags({
-      div(class = "map_container",
-            leaflet::leafletOutput('map', height = '85vh'),
+      div(id = "map_container",
+            leaflet::leafletOutput('map', height = 'auto'),
             div(id = 'initial_popup', class = "popup", 
                 HTML('<h3, class = "popup_text">Would you like the tutorial?</h3></br>'),
                 actionLink('close_help', label = HTML('<p class="close">&times;</p>')),
@@ -66,11 +58,13 @@ output$pageStub <- renderUI(tagList(
                 # actionButton("walkthrough", HTML("<p>Yes</p>")),
                 # actionButton("no_walkthrough", HTML("<p>No</p>"))
               ),
-            uiOutput('tutorial')
-
-          
+            uiOutput('tutorial'),
+            div(id = 'home_button', tags$a(href = '?home', icon('home', class = 'fa-3x'))),
+            div(id = 'select_year_div', pickerInput('select_year', 
+                                                    choices = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
+                                                                as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
+                                                    multiple = FALSE, selected = as.character(inputs$year_range[2]), width = 'auto'))
           )
-    # })
   )
 )
 )
@@ -487,8 +481,8 @@ make_map = function(present_spdf, past_spdf, inputs, TRACT_PAL = 'RdYlGn', TRACT
                 group = as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1])), options = pathOptions(pane = "risk_tiles")) %>% 
     addLegend(colors = tract_pal(legend_val[length(legend_val):1]), opacity = 0.7, position = 'bottomright',
               title = 'Risk factors level', labels = c('High (90%ile)', 'Low (10%ile)')) %>%
-    addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
-                                    as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1])))) %>%
+    # addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]),
+    #                                 as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1])))) %>%
     showGroup(as.character(inputs$year_range[2])) %>% hideGroup('Clear')
   return(map_all)
 }
@@ -498,6 +492,8 @@ output$map <- renderLeaflet(initial_map)
 
 
 ####### Tutorial #########
+
+#General map movement
 observeEvent(input$walkthrough,{
   shinyjs::hide(id = 'initial_popup')
   output$tutorial <- renderUI({
@@ -511,6 +507,7 @@ observeEvent(input$walkthrough,{
   })
 })
 
+#map tiles
 observeEvent(input$walkthrough_map_nav,{
   # shinyjs::hide(id = 'initial_popup')
   output$tutorial <- renderUI({
@@ -533,6 +530,7 @@ observeEvent(input$walkthrough_map_nav,{
   
 })
 
+#legend
 observeEvent(input$walkthrough_map_tile,{
   # shinyjs::hide(id = 'initial_popup')
   # shinyjs::removeCssClass(class = 'highlight-border', selector = '.leaflet-popup-content')
@@ -553,45 +551,40 @@ observeEvent(input$walkthrough_map_tile,{
   
 })
 
+#layer controls
 observeEvent(input$walkthrough_legend,{
   # shinyjs::hide(id = 'initial_popup')
   shinyjs::removeCssClass(class = 'highlight-border', selector = '.legend')
   
-  leafletProxy('map') %>% removeLayersControl() %>% addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
-                                                                                    as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
-                                                                    options = layersControlOptions(collapsed = FALSE))
   output$tutorial <- renderUI({
     div(id = 'layer_and_metrics_popup', class = "popup",
-        HTML('<h5, class = "popup_text"></h5>Change the year by clicking on the buttons to the right. 
+        HTML('<h5, class = "popup_text"></h5>Change the year by clicking the drop-down to the right. 
              You can see the metrics for the past and present, as well as the predict overall metric for the future.</br>'),
         actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
-        div(class = 'no_big_screen',actionBttn("end_walkthrough", HTML("<p no_big_screen>Explore map</p>"), style = 'unite', size = 'sm')),
+        div(class = 'no_big_screen',actionBttn("walkthrough_to_home", HTML("<p no_big_screen>Next</p>"), style = 'unite', size = 'sm')),
         div(class = 'no_small_screen',actionBttn("walkthrough_layers", HTML("<p no_small_screen>Next</p>"), style = 'unite', size = 'sm'))
-        # div(class = 'no_big_screen', actionButton("end_walkthrough", HTML("<p no_big_screen>Explore map</p>"))),
+        # div(class = 'no_big_screen', actionButton("walkthrough_to_home", HTML("<p no_big_screen>Explore map</p>"))),
         # div(class = 'no_small_screen', actionButton("walkthrough_layers", HTML("<p no_small_screen>Next</p>")))
         
     )
   })
-  shinyjs::addCssClass(class = 'highlight-border', selector = '.leaflet-top.leaflet-right')
+  shinyjs::addCssClass(id = 'select_year_div', class = 'highlight-border')
 
 })
 
-
+#weight adjustment
 observeEvent(input$walkthrough_layers,{
   # shinyjs::hide(id = 'initial_popup')
-  shinyjs::removeCssClass(class = 'highlight-border', selector = '.leaflet-top.leaflet-right')
+  shinyjs::removeCssClass(id = 'select_year_div', class = 'highlight-border')
   
-  leafletProxy('map') %>% removeLayersControl() %>% addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
-                                                                                    as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
-                                                                     options = layersControlOptions(collapsed = TRUE))
   output$tutorial <- renderUI({
     div(id = 'layer_and_metrics_popup', class = "popup",
-        HTML('<h5, class = "popup_text"></h5>Currently, all of the metrics you chose to look at are weighted equally. 
+        HTML('<h5, class = "popup_text">Currently, all of the metrics you chose to look at are weighted equally. 
              If you feel like some should be more important than others in determining your overall metric,
-             you can adjust their weights above.</br>'),
+             you can adjust their weights above.</br></h5>'),
         actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
-        div(actionBttn("end_walkthrough", HTML("<p>Explore map</p>"), style = 'unite', size = 'sm'))
-        # div(actionButton("end_walkthrough", HTML("<p>Explore map</p>")))
+        div(actionBttn("walkthrough_to_home", HTML("<p>Next</p>"), style = 'unite', size = 'sm'))
+        # div(actionButton("walkthrough_to_home", HTML("<p>Next</p>")))
         
     )
   })
@@ -601,6 +594,31 @@ observeEvent(input$walkthrough_layers,{
   
 })
 
+#home button and final mentions
+observeEvent(input$walkthrough_to_home,{
+  shinyjs::removeCssClass(class = 'highlight-border', selector = '.panel.panel-info')
+  updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
+  
+  shinyjs::removeCssClass(id = 'select_year_div', class = 'highlight-border')
+  
+  output$tutorial <- renderUI({
+    div(id = 'home_popup', class = "popup",
+        HTML('<h5, class = "popup_text">Return to the home screen by clicking on the home icon.',
+             '<span class = "no_big_screen">For additional features, access this site on a larger screen.</span>',
+             'For comments, questions and custom mapping requests, contact Albert at <a href = "mailto: gehami@alumni.stanford.edu">gehami@alumni.stanford.edu</a>',
+             '</h5></br>'),
+        actionLink('close_help_popups', label = HTML('<p class="close">&times;</p>')),
+        div(actionBttn("end_walkthrough", HTML("<p>Explore map</p>"), style = 'unite', size = 'sm'))
+        # div(actionButton("end_walkthrough", HTML("<p>Explore map</p>")))
+    )     
+  })
+  
+  shinyjs::addCssClass(id = 'home_button', class = 'highlight-border')
+  
+  
+})
+
+#close "x" button from first screen
 observeEvent(input$close_help,{
   output$tutorial <- renderUI({
     div(id = 'return_help_popup', class = 'help_popup', 
@@ -612,38 +630,28 @@ observeEvent(input$close_help,{
   
 })
 
+#close "x" button from non-first screen
 observeEvent(input$close_help_popups,{
   print("This should close the help popup")
-  leafletProxy('map') %>% removeLayersControl() %>% clearPopups() %>%
-    addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
-                                    as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
-                     options = layersControlOptions(collapsed = TRUE))
+  leafletProxy('map') %>% clearPopups()
   output$tutorial <- renderUI({
     div(id = 'return_help_popup', class = 'help_popup', 
         actionLink('open_help', HTML('<p class = "re_open">&quest;</p>'))
     )
   })
-  updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
+  shinyBS::updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
   shinyjs::removeCssClass(class = 'highlight-border', selector = '.panel.panel-info')
-  shinyjs::removeCssClass(class = 'highlight-border', selector = '.leaflet-top.leaflet-right')
+  shinyjs::removeCssClass(id = 'select_year_div', class = 'highlight-border')
   shinyjs::removeCssClass(class = 'highlight-border', selector = '.legend')
+  shinyjs::removeCssClass(id = 'home_button', class = 'highlight-border')
   
   
 })
 
-
-
-
+#end walkthrough button
 observeEvent(input$end_walkthrough,{
 
-  shinyjs::removeCssClass(class = 'highlight-border', selector = '.panel.panel-info')
-  updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
-  
-  shinyjs::removeCssClass(class = 'highlight-border', selector = '.leaflet-top.leaflet-right')
-  leafletProxy('map') %>% removeLayersControl() %>% addLayersControl(baseGroups = c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]), 
-                                                                                    as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1]))),
-                                                                     options = layersControlOptions(collapsed = TRUE))
-  
+  shinyjs::removeCssClass(id = 'home_button', class = 'highlight-border')
   
   output$tutorial <- renderUI({
     div(id = 'return_help_popup', class = 'help_popup', 
@@ -653,6 +661,7 @@ observeEvent(input$end_walkthrough,{
   
 })
 
+#no walkthrough button
 observeEvent(input$no_walkthrough,{
   shinyjs::hide(id = 'initial_popup')
   output$tutorial <- renderUI({
@@ -662,9 +671,7 @@ observeEvent(input$no_walkthrough,{
   })
 })
 
-
-
-
+#re-open help
 observeEvent(input$open_help,{
   output$tutorial <- renderUI({
     div(class = "popup",
@@ -677,7 +684,6 @@ observeEvent(input$open_help,{
     )
   })
 })
-
 
 
 
@@ -709,6 +715,14 @@ if(length(data_factors) > 2){
 
 
 
+
+######### Updating map year layer #######
+
+observeEvent(input$select_year,{
+  leafletProxy('map') %>% hideGroup(c('Clear', as.character(inputs$year_range[1]), as.character(inputs$year_range[2]),
+                                      as.character(inputs$year_range[2] + (inputs$year_range[2] - inputs$year_range[1])))) %>%
+    showGroup(as.character(input$select_year)) 
+})
 
 ############# Updating map with updated metrics and reseting weights ##############
 
@@ -756,7 +770,7 @@ observeEvent(input$recalculate_weights,{
   
   output$map = renderLeaflet(new_map)
   
-  updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
+  shinyBS::updateCollapse(session, "sliders", close = 'Click here to edit weight of metrics')
   # progress$close()
   
   shinyjs::enable("recalculate_weights")
