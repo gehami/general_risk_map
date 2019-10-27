@@ -472,9 +472,9 @@ make_map = function(present_spdf, past_spdf, inputs, TRACT_PAL = 'RdYlGn', TRACT
 
 #these need to be converted into a list and saved as an rds file to be maintained throughout the journey
 #check if file exists
-if(file.exists('inputs_outputs/home_inputs.rds')){
-  inputs = readRDS('inputs_outputs/home_inputs.rds')
-}else{
+# if(file.exists('inputs_outputs/home_inputs.rds')){
+#   inputs = readRDS('inputs_outputs/home_inputs.rds')
+# }else{
   inputs = hash()
   inputs[['cities']] <- ''
   inputs[['year_range']] <- YEAR_RANGE
@@ -482,7 +482,7 @@ if(file.exists('inputs_outputs/home_inputs.rds')){
   inputs[['health_factors']] <- ''
   inputs[['economics_factors']] <- ''
   inputs[['qol_factors']] <- ''
-}
+# }
 
 location = inputs[['cities']]
 violence_risk_factors = inputs[['violence_factors']]
