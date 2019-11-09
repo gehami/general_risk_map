@@ -7,16 +7,16 @@
 
 
 #reading in codebook to translate the names of the acs vars to their name in the dataset
-if(!exists('codebook')){
+# if(!exists('codebook')){
   codebook = read.csv('variable_mapping.csv', stringsAsFactors = FALSE)
-}
+# }
 
-data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
+data_code_book = codebook[!duplicated(paste0(codebook$risk_factor_name, codebook$metric_category)),]
 
 ####### Constants #########
 
 
-VIOLENCE_CHOICES = data_code_book$risk_factor_name[grep('violence', data_code_book$metric_category, ignore.case = TRUE)]
+VIOLENCE_CHOICES = data_code_book$risk_factor_name[grep('at-risk', data_code_book$metric_category, ignore.case = TRUE)]
 HEALTH_CHOICES = data_code_book$risk_factor_name[grep('health', data_code_book$metric_category, ignore.case = TRUE)]
 ECONOMIC_CHOICES = data_code_book$risk_factor_name[grep('economic', data_code_book$metric_category, ignore.case = TRUE)]
 QOL_CHOICES = data_code_book$risk_factor_name[grep('qol', data_code_book$metric_category, ignore.case = TRUE)]
@@ -478,14 +478,15 @@ make_map = function(present_spdf, past_spdf, inputs, TRACT_PAL = 'RdYlGn', TRACT
   inputs = hash()
   inputs[['cities']] <- ''
   inputs[['year_range']] <- YEAR_RANGE
-  inputs[['violence_factors']] <- ''
   inputs[['health_factors']] <- ''
   inputs[['economics_factors']] <- ''
+  inputs[['at-risk_factors']] <- ''
   inputs[['qol_factors']] <- ''
 # }
 
+  
 location = inputs[['cities']]
-violence_risk_factors = inputs[['violence_factors']]
+violence_risk_factors = inputs[['at-risk_factors']]
 health_risk_factors = inputs[['health_factors']]
 economic_factors = inputs[['economics_factors']]
 qol_factors = inputs[['qol_factors']]
@@ -537,18 +538,11 @@ output$pageStub <- renderUI(tagList(
            )
   ),
   fluidRow(column(12,
-                  h3('Select the metrics of interest'),
+                  h3('Select a preset group of metrics'),
+                  uiOutput('preset_buttons'),
+                  h3('Or customize your metrics of interest'),
 
-                  div(class = "factor_selector",
-                      dropdownButton(
-                        checkboxInput('all_violence_factors', "Select all", value = FALSE),
-                        checkboxGroupInput(
-                          'violence_factors', 'Risk factors for violence/delinqunecy',
-                          choices = VIOLENCE_CHOICES, selected = violence_risk_factors
-                        ),
-                        label = 'Risk factors for violence/delinquency',
-                        circle = FALSE
-                  )),
+                  
                   div(class = "factor_selector", 
                     dropdownButton(
                     checkboxInput('all_health_factors', "Select all"),
@@ -572,10 +566,20 @@ output$pageStub <- renderUI(tagList(
                     circle = FALSE
                   )),
                   div(class = "factor_selector",
+                      dropdownButton(
+                        checkboxInput('all_violence_factors', "Select all", value = FALSE),
+                        checkboxGroupInput(
+                          'violence_factors', 'At-risk factors',
+                          choices = VIOLENCE_CHOICES, selected = violence_risk_factors
+                        ),
+                        label = 'At-risk factors',
+                        circle = FALSE
+                  )),
+                  div(class = "factor_selector",
                     dropdownButton(
                     checkboxInput('all_qol_factors', "Select all"),
                     checkboxGroupInput(
-                      'qol_factors', 'Quality-of-life factors',
+                      'qol_factors', 'Other quality-of-life factors',
                       choices = QOL_CHOICES, 
                       selected = qol_factors
                     ),
@@ -617,6 +621,95 @@ output$select_city <- renderUI({
   )
 })
 
+
+
+
+
+
+######### Setting up the preset metrics buttons ###########
+
+preset_options = gsub('\\.', ' ', gsub('^Preset_[0-9]+_', '', 
+                                       grep('^Preset', colnames(data_code_book), value = TRUE, ignore.case = TRUE)))
+
+output$preset_buttons <- renderUI(lapply(preset_options, function(i){
+                                       actionBttn(inputId = i, label = i, size = 'sm')
+                                     }))
+
+clicked_preset <- reactiveVal(FALSE)
+
+#if the first preset is clicked
+observeEvent(input[[preset_options[1]]], {
+  
+  clicked_preset(TRUE)
+  
+  violence_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_1_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                                data_code_book$metric_category == 'at-risk']
+  health_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_1_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                              data_code_book$metric_category == 'health']
+  economic_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_1_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                              data_code_book$metric_category == 'economic']
+  qol_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_1_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                              data_code_book$metric_category == 'qol']
+  
+  
+  updateCheckboxGroupInput(session, 'violence_factors', selected = violence_selected)
+  updateCheckboxGroupInput(session, 'health_factors', selected = health_selected)
+  updateCheckboxGroupInput(session, 'economic_factors', selected = economic_selected)
+  updateCheckboxGroupInput(session, 'qol_factors', selected = qol_selected)
+  
+  shinyjs::click('map_it')
+  
+  
+})
+#if the second preset is clicked
+observeEvent(input[[preset_options[2]]], {
+  
+  clicked_preset(TRUE)
+  
+  
+  violence_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_2_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                                        data_code_book$metric_category == 'at-risk']
+  health_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_2_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                                      data_code_book$metric_category == 'health']
+  economic_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_2_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                                        data_code_book$metric_category == 'economic']
+  qol_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_2_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                                   data_code_book$metric_category == 'qol']
+  
+  
+  updateCheckboxGroupInput(session, 'violence_factors', selected = violence_selected)
+  updateCheckboxGroupInput(session, 'health_factors', selected = health_selected)
+  updateCheckboxGroupInput(session, 'economic_factors', selected = economic_selected)
+  updateCheckboxGroupInput(session, 'qol_factors', selected = qol_selected)
+  
+  shinyjs::click('map_it')
+  
+  
+})
+#if the third preset is clicked
+observeEvent(input[[preset_options[3]]], {
+  
+  clicked_preset(TRUE)
+  
+  violence_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_3_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                                        data_code_book$metric_category == 'at-risk']
+  health_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_3_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                                      data_code_book$metric_category == 'health']
+  economic_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_3_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                                        data_code_book$metric_category == 'economic']
+  qol_selected = data_code_book$risk_factor_name[data_code_book[,grep('^Preset_3_', colnames(data_code_book), ignore.case = TRUE)] %in% 1 &
+                                                   data_code_book$metric_category == 'qol']
+  
+  
+  updateCheckboxGroupInput(session, 'violence_factors', selected = violence_selected)
+  updateCheckboxGroupInput(session, 'health_factors', selected = health_selected)
+  updateCheckboxGroupInput(session, 'economic_factors', selected = economic_selected)
+  updateCheckboxGroupInput(session, 'qol_factors', selected = qol_selected)
+  
+  shinyjs::click('map_it')
+  
+  
+})
 
 
 
@@ -691,7 +784,7 @@ output$loading_sign = NULL
 output$input_warning <- renderUI(HTML("<h5>This process may take up to 60 seconds</h5>"))
 
 observeEvent(input$map_it,{
-  if(is.null(c(input$violence_factors, input$health_factors, input$economic_factors, input$qol_factors))){
+  if(is.null(c(input$violence_factors, input$health_factors, input$economic_factors, input$qol_factors)) & !clicked_preset()){
     print("no factors present")
     output$input_warning <- renderUI(h5("Please select at least 1 risk factor from the 4 drop-down menus above", class = "warning_text"))
   }else if(is.null(input$city) | input$city == ''){
@@ -709,9 +802,9 @@ observeEvent(input$map_it,{
     inputs[['cities']] <- input$city
     # inputs[['year_range']] <- input$year_range
     inputs[['year_range']] <- YEAR_RANGE
-    inputs[['violence_factors']] <- input$violence_factors
     inputs[['health_factors']] <- input$health_factors
     inputs[['economics_factors']] <- input$economic_factors
+    inputs[['at-risk_factors']] <- input$violence_factors
     inputs[['qol_factors']] <- input$qol_factors
     print(inputs)
     saveRDS(inputs, 'inputs_outputs/home_inputs.rds')
@@ -818,7 +911,7 @@ observeEvent(input$map_it,{
     progress$set(message = "Developing metric scores", value = .35)
     
     #creating the scores
-    risk_vars = data_factors
+    risk_vars = data_factors[!duplicated(as.character(data_factors))]
     risk_weights = rep(INITIAL_WEIGHTS, length(risk_vars))
     # spdf = city_all_spdf_hash[['2018']]
     # data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
