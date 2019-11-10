@@ -1,0 +1,47 @@
+go to cmd prompt
+type in below
+cd .ssh
+ssh -i "first_aws_key.pem" ubuntu@ec2-3-15-224-131.us-east-2.compute.amazonaws.com
+
+for guidance on getting this up and running, follow these steps: 
+https://www.youtube.com/watch?v=0h9VOQZX6QM
+
+to install a packge, use this command: 
+sudo su - \
+-c "R -e \"install.packages('[PACKAGE_NAME]', repos='https://cran.rstudio.com/')\""
+
+
+To paste on the ubuntu server command line, copy the thing you want to paste and then right click on the command line
+
+
+path to configuration file - sudo 
+
+move this code here: 
+/srv/shiny-server
+
+
+uploading the app:
+git clone https://github.com/gehami/general_risk_map.git 
+
+
+
+
+Installing packages
+sudo su - \
+-c "R -e \"install.packages('shinyWidgets', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('tools', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('hash', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('leaflet', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('magrittr', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('shinyBS', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('sp', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('rgeos', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('shinyjs', repos='https://cran.rstudio.com/')\""
