@@ -716,6 +716,32 @@ observeEvent(input[[preset_options[3]]], {
 
 ######### Setting up the select all checkboxes and their server code ##########
 
+
+#checkbox server code to make sure only one "mental health diagnoses" is checked at a time
+#since we have mental health in two places, we are making sure that if you check one then you uncheck the other one
+
+observeEvent(input$violence_factors, {
+  if(length(input$health_factors) == 0){}else{
+  print(input$health_factors)
+  print(input$violence_factors)
+  if(any(grepl('Mental health diagnoses', input$health_factors)) & any(grepl('Mental health diagnoses', input$violence_factors))){
+    print('chaning')
+    updateCheckboxGroupInput(session, 'health_factors', selected = input$health_factors[grep('Mental health diagnoses', input$health_factors, invert = TRUE)])
+  }}
+})
+observeEvent(input$health_factors, {
+  if(length(input$violence_factors) == 0){}else{
+  print(input$health_factors)
+  print(input$violence_factors)
+  if(any(grepl('Mental health diagnoses', input$health_factors)) & any(grepl('Mental health diagnoses', input$violence_factors))){
+    print('chaning')
+    updateCheckboxGroupInput(session, 'violence_factors', selected = input$violence_factors[grep('Mental health diagnoses', input$violence_factors, invert = TRUE)])
+  }}
+})
+
+
+
+
 #this just tracks if they have actually pressed the "Select all button" at all.
 select_all_tracker = reactiveVal(FALSE)
 
@@ -778,6 +804,10 @@ observeEvent(input$all_qol_factors, {
 
 
 
+
+
+
+
 ##### Reaction to save inputs and begin building the map ##########
 
 output$loading_sign = NULL
@@ -808,6 +838,7 @@ observeEvent(input$map_it,{
     inputs[['qol_factors']] <- input$qol_factors
     print(inputs)
     saveRDS(inputs, 'inputs_outputs/home_inputs.rds')
+    # inputs = readRDS('inputs_outputs/home_inputs.rds')
     
     
     ###### opening files and doing the things ######
