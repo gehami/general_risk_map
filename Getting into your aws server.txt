@@ -22,7 +22,8 @@ move this code here:
 
 uploading the app:
 git clone https://github.com/gehami/general_risk_map.git 
-
+cd /srv/shiny-server
+sudo mv ~/general_risk_map/App_and_files/shiny_web_app
 
 
 
