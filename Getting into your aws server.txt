@@ -1,10 +1,13 @@
+for guidance on getting this up and running, follow these steps: 
+https://www.youtube.com/watch?v=0h9VOQZX6QM
+
+NEW THEORY: JUST MAKE A REPO OF ONLY WHAT YOU UPLOAD TO SHINYAPPS.IO AND SE IF THAT WORKS
+
 go to cmd prompt
 type in below
 cd .ssh
 ssh -i "first_aws_key.pem" ubuntu@ec2-3-15-224-131.us-east-2.compute.amazonaws.com
 
-for guidance on getting this up and running, follow these steps: 
-https://www.youtube.com/watch?v=0h9VOQZX6QM
 
 to install a packge, use this command: 
 sudo su - \
@@ -24,6 +27,10 @@ uploading the app:
 git clone https://github.com/gehami/general_risk_map.git 
 cd /srv/shiny-server
 sudo mv ~/general_risk_map/App_and_files/shiny_web_app
+
+
+Have a problem? Check the logs:
+3838/var/log/shiny-server.log
 
 
 
@@ -46,3 +53,8 @@ sudo su - \
 -c "R -e \"install.packages('rgeos', repos='https://cran.rstudio.com/')\""
 sudo su - \
 -c "R -e \"install.packages('shinyjs', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('rmarkdown', repos='https://cran.rstudio.com/')\""
+sudo su - \
+-c "R -e \"install.packages('rsconnect', repos='https://cran.rstudio.com/')\""
+

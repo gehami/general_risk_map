@@ -22,45 +22,6 @@ ECONOMIC_CHOICES = data_code_book$risk_factor_name[grep('economic', data_code_bo
 QOL_CHOICES = data_code_book$risk_factor_name[grep('qol', data_code_book$metric_category, ignore.case = TRUE)]
 
 
-# VIOLENCE_CHOICES = c(#need to do some research on what variables can be selected. 
-#   'Rate of binge drinking', #measured by CDC binge drinking reports
-#   'Mental health diagnoses',
-#   'Low education (no high school diploma)',
-#   'Young single parents (<25)',
-#   'Children in poverty'
-#   # 'Unemployment rate',
-#   # 'Households under poverty line'
-# )
-# HEALTH_CHOICES = c(
-#   'Lack health insurance (18-64)',
-#   'Lack dental visits',
-#   'Regularly sleep <7 hours',
-#   # 'Mental health diagnoses',
-#   'No physical activity',
-#   'Obesity rate',
-#   'High blood pressure',
-#   'Diabetes',
-#   'High cholesterol',
-#   'Asthma',
-#   'Arthritis',
-#   'Heart Disease',
-#   'Cancer'
-# )
-# ECONOMIC_CHOICES = c(
-#   'Unemployment rate',
-#   'Adults out of labor force',
-#   'Households under poverty line',
-#   'Renter households'
-# )
-# QOL_CHOICES = c(
-#   'Speak little to no English',
-#   'Born outside the US',
-#   'Moved to county in past year',
-#   'Public transit to work',
-#   'Walk to work'#,
-#   # 'Households without a computer',
-#   # 'Households without broadband'
-# )
 
 #Understanding the year range that should be available in the app
 #since cdc data only goes back to 2016, we are cutting the year range off at 2016 minimum
@@ -97,7 +58,11 @@ get_percentile = function(vec, compare_vec = NULL){
 get_quantile = function(vec, quantile_bins, ret_factor = TRUE, ret_100_ile = FALSE, compare_vec = NULL){
   quantile_bins = round(min(max(quantile_bins, 2), 100)) #ensuring the quantile bins is an integer between 2 and 100
   quant_val = floor(get_percentile(vec, compare_vec)*100 / (100/quantile_bins)) * (100/quantile_bins)
-  if(!ret_100_ile){ quant_val[quant_val == 100] = unique(quant_val)[order(-unique(quant_val))][2]}
+  if(!ret_100_ile){ 
+    if(length(quant_val) == 1 & quant_val == 100){quant_val = (1 - 1/quantile_bins)*100}else{
+      quant_val[quant_val == 100] = unique(quant_val)[order(-unique(quant_val))][2]
+      }
+    }
   if(ret_factor){return(factor(quant_val))}
   return(quant_val)
 }
@@ -522,7 +487,7 @@ output$pageStub <- renderUI(tagList(
   div(class = 'center_wrapper',
   fluidRow(class = 'splash_front',
     div(class = "on_same_row", 
-        selectizeInput('state', HTML('Filter by state or directly search for your city below'), choices = c(states_cdc[order(states_cdc)]), 
+        selectizeInput('state', HTML('Filter by state and search for your city below'), choices = c(states_cdc[order(states_cdc)]), 
                        options = list(
                          onInitialize = I(paste0('function() { this.setValue(""); }'))
                        )),
@@ -612,11 +577,12 @@ output$pageStub <- renderUI(tagList(
 
 output$select_city <- renderUI({
   selectizeInput(
-    'city', HTML('Search for your city </br><small>(Largest 500 US cities only)</small>'), choices = c(cities_cdc[grep(paste0(input$state, '$'), cities_cdc)]), multiple = FALSE,
+    'city', HTML('Search for your city </br><small>(Largest 500 US cities only)</small>'), choices = 
+      c(cities_cdc[grep(paste0(input$state, '$'), cities_cdc)])[order(c(cities_cdc[grep(paste0(input$state, '$'), cities_cdc)]))], multiple = FALSE,
     options = list(
       placeholder = 'Enter City name',
       onInitialize = I(paste0('function() { this.setValue("',paste(location, collapse = ','),'"); }')),
-      maxOptions = 30
+      maxOptions = 1000
     )
   )
 })
@@ -945,7 +911,7 @@ observeEvent(input$map_it,{
     risk_vars = data_factors[!duplicated(as.character(data_factors))]
     risk_weights = rep(INITIAL_WEIGHTS, length(risk_vars))
     # spdf = city_all_spdf_hash[['2018']]
-    # data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
+    # #data_code_book = codebook[!duplicated(codebook$risk_factor_name),]
     quantile_bins = QUANTILE_BINS
     
     progress$set(message = paste0("Designing map of ", inputs$year_range[1]), value = .40)
